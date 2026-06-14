@@ -208,79 +208,60 @@
         }
 
 
-        // --- СТАРЫЕ ФУНКЦИИ (ОБНОВЛЕННЫЕ ПОД УВЕДОМЛЕНИЯ) ---
-        function showPage(pageName) {
-            // Прячем ВСЕ секции
+        function showPage(pageName, filterName = 'Ожерелья') {
             document.getElementById('main-page').classList.remove('active');
             document.getElementById('catalog-page').classList.remove('active');
             document.getElementById('cart-page').classList.remove('active');
             
-            // Показываем нужную
             if(pageName === 'main') {
                 document.getElementById('main-page').classList.add('active');
             } else if(pageName === 'catalog') {
                 document.getElementById('catalog-page').classList.add('active');
-                loadProducts();
+                document.getElementById('catalog-title').innerText = filterName;
+                loadProducts(filterName); // Передаем, что именно мы хотим загрузить
             } else if(pageName === 'cart') {
                 document.getElementById('cart-page').classList.add('active');
-                loadCart(); // Вызываем новую функцию загрузки корзины
+                loadCart();
             }
         }
 
-        async function buyProduct(id, name) {
-            // Берем токен из памяти браузера
-            const token = localStorage.getItem('access_token');
-            
-            // Если токена нет, не даем даже нажать на кнопку и вызываем модалку
-            if (!token) {
-                showToast('Сначала войдите в профиль!', 'error');
-                openAuthModal();
-                return;
-            }
-
+        async function loadProducts(filterName) {
             try {
-                const response = await fetch('http://localhost:8002/orders', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // НОВОЕ: Передаем токен серверу!
-                    },
-                    body: JSON.stringify({ item_id: id, item_name: name })
-                });
-                
-                if(response.ok) {
-                    showToast(`В корзину: "${name}"`, 'success');
-                } else if (response.status === 401) {
-                    // Если токен истек или неверный
-                    showToast('Сессия истекла, войдите заново', 'error');
-                    logout();
-                    openAuthModal();
-                } else {
-                    showToast('Ошибка при добавлении в корзину', 'error');
-                }
-            } catch (error) {
-                showToast('Сервис заказов недоступен', 'error');
-            }
-        }
+                // Превращаем название кнопки в параметры для базы данных
+                let queryParam = '';
+                if (filterName === 'Ожерелья') queryParam = 'product_type=Ожерелье';
+                else if (filterName === 'Комплекты') queryParam = 'product_type=Комплект';
+                else if (filterName === 'Новинки') queryParam = 'is_new=true';
 
-        async function loadProducts() {
-            try {
-                const response = await fetch('http://localhost:8001/products');
+                // Запрашиваем товары с фильтром
+                const response = await fetch(`http://localhost:8001/products?${queryParam}`);
                 const products = await response.json();
+                
                 const container = document.getElementById('products-container');
                 container.innerHTML = ''; 
+
+                if (products.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; grid-column: span 3; color: #aaa;">В этой категории пока нет товаров.</p>';
+                    return;
+                }
 
                 products.forEach(product => {
                     const card = document.createElement('div');
                     card.className = 'product-card';
+                    
+                    // Если товар новинка (is_new === true), рисуем кружок "NEW" как в Фигме
+                    const newBadge = product.is_new 
+                        ? `<div style="position: absolute; right: 40px; top: -15px; width: 45px; height: 45px; border-radius: 50%; border: 1px solid #fff; background: #050505; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Montserrat', sans-serif;">NEW</div>`
+                        : '';
+
                     card.innerHTML = `
                         <div class="image-wrapper">
                             <img src="${product.image}" class="image-arch" alt="${product.name}" onerror="this.style.backgroundColor='#111'">
+                            ${newBadge}
                             <button class="cart-btn" onclick="buyProduct(${product.id}, '${product.name}')">+</button>
                         </div>
                         <div class="card-info-top">
-                            <span>МАРМЕЛАДНАЯ</span>
-                            <span>В НАЛИЧИИ</span>
+                            <span>${product.collection}</span>  <span>В НАЛИЧИИ</span>
                         </div>
                         <h3 class="card-title serif-text">${product.name}</h3>
                         <div class="card-price">${product.price} ₽</div>
@@ -288,10 +269,10 @@
                     container.appendChild(card);
                 });
             } catch (error) {
-                document.getElementById('products-container').innerHTML = '<p style="text-align:center;">База данных каталога недоступна.</p>';
+                document.getElementById('products-container').innerHTML = '<p style="text-align:center; grid-column: span 3; color: #8b0000;">База данных каталога недоступна.</p>';
             }
         }
-
+        
         async function loadCart() {
             const token = localStorage.getItem('access_token');
             const container = document.getElementById('cart-container');
