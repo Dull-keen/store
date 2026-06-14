@@ -190,3 +190,26 @@ def checkout_orders(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Корзина пуста")
         
     return {"message": "Заказ успешно оформлен!"}
+
+@app.delete("/orders/{order_id}")
+def delete_order(order_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Удаляем товар по его ID. 
+    # ВАЖНО: проверяем user_id, чтобы хакер не мог удалить чужой заказ!
+    # И разрешаем удалять только то, что еще "В корзине" (оформленные отменять нельзя).
+    cursor.execute(
+        "DELETE FROM orders WHERE order_id = %s AND user_id = %s AND status = 'В корзине'",
+        (order_id, current_user["id"])
+    )
+    deleted_count = cursor.rowcount
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    if deleted_count == 0:
+        raise HTTPException(status_code=400, detail="Товар не найден или уже оформлен")
+        
+    return {"message": "Товар успешно удален из корзины"}

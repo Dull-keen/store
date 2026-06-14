@@ -331,9 +331,14 @@
                     // Если товар уже оформлен, делаем его чуть бледнее
                     const opacity = order.status === 'Оформлен' ? '0.5' : '1';
 
+                    // Показываем крестик (×) только если товар еще "В корзине"
+                    const deleteBtn = order.status === 'В корзине' 
+                        ? `<span onclick="removeFromCart(${order.order_id})" style="cursor:pointer; color: #8b0000; font-size: 24px; margin-left: 15px; transition: 0.3s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color='#8b0000'">×</span>` 
+                        : '';
+
                     item.innerHTML = `
-                        <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase; opacity: ${opacity};">
-                            ${order.item_name}
+                        <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase; opacity: ${opacity}; display: flex; align-items: center;">
+                            ${order.item_name} ${deleteBtn}
                         </div>
                         <div style="color: #aaa; font-size: 12px; letter-spacing: 1px;">
                             СТАТУС: <span style="color: ${order.status === 'Оформлен' ? '#a89f91' : '#fff'};">${order.status}</span>
@@ -378,6 +383,26 @@
                 }
             } catch (error) {
                 showToast('Сервис заказов недоступен', 'error');
+            }
+        }
+
+        async function removeFromCart(orderId) {
+            const token = localStorage.getItem('access_token');
+            try {
+                // Обрати внимание, метод DELETE
+                const response = await fetch(`http://localhost:8002/orders/${orderId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    showToast('Товар удален из корзины', 'success');
+                    loadCart(); // Мгновенно перерисовываем корзину без этого товара
+                } else {
+                    showToast('Не удалось удалить товар', 'error');
+                }
+            } catch (error) {
+                showToast('Сервис недоступен', 'error');
             }
         }
         
