@@ -20,7 +20,14 @@
 
         /* Страницы */
         .page-section { display: none; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .page-section.active { display: block; }
+        .page-section.active { 
+            display: block; 
+            animation: fadeIn 0.4s ease-out forwards; 
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .main-page-content { text-align: center; max-width: 800px; margin: 0 auto; }
         .main-huge-arch { width: 100%; max-width: 500px; height: 600px; object-fit: cover; border-radius: 300px 300px 0 0; border: 1px solid #444; margin-bottom: 40px; }
         .main-page-content h1 { font-size: 56px; margin-bottom: 30px; }
@@ -295,7 +302,6 @@
             }
 
             try {
-                // Делаем запрос, ПРИКЛАДЫВАЯ ТОКЕН
                 const response = await fetch('http://localhost:8002/orders', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -313,25 +319,65 @@
                     return;
                 }
 
-                // Очищаем контейнер и рисуем список товаров
                 container.innerHTML = '';
+                let hasPendingItems = false; // Проверяем, есть ли товары, ожидающие оформления
+
                 orders.forEach(order => {
+                    if (order.status === 'В корзине') hasPendingItems = true;
+
                     const item = document.createElement('div');
-                    // Стилизуем строчку заказа под темную тему
                     item.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 20px 0; align-items: center;";
                     
+                    // Если товар уже оформлен, делаем его чуть бледнее
+                    const opacity = order.status === 'Оформлен' ? '0.5' : '1';
+
                     item.innerHTML = `
-                        <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase;">
+                        <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase; opacity: ${opacity};">
                             ${order.item_name}
                         </div>
                         <div style="color: #aaa; font-size: 12px; letter-spacing: 1px;">
-                            СТАТУС: <span style="color: #fff;">${order.status}</span>
+                            СТАТУС: <span style="color: ${order.status === 'Оформлен' ? '#a89f91' : '#fff'};">${order.status}</span>
                         </div>
                     `;
                     container.appendChild(item);
                 });
+
+                // Если есть товары в корзине, рисуем блок оформления с промокодом
+                if (hasPendingItems) {
+                    const checkoutDiv = document.createElement('div');
+                    checkoutDiv.style.cssText = "margin-top: 40px; text-align: right; border-top: 1px solid #333; padding-top: 30px;";
+                    checkoutDiv.innerHTML = `
+                        <div style="margin-bottom: 25px; display: flex; justify-content: flex-end; gap: 15px;">
+                            <input type="text" placeholder="Промокод" class="form-input" style="width: 200px; margin: 0; padding: 10px;">
+                            <button onclick="showToast('Промокод применен!', 'success')" class="submit-btn" style="width: 150px; background: transparent; color: #fff; border: 1px solid #fff; padding: 10px;">Применить</button>
+                        </div>
+                        <button onclick="checkout()" class="submit-btn" style="width: 250px; font-size: 14px; padding: 15px;">Оформить заказ</button>
+                    `;
+                    container.appendChild(checkoutDiv);
+                }
+
             } catch (error) {
                 container.innerHTML = '<p style="text-align:center; color: #8b0000;">Ошибка загрузки корзины.</p>';
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Оформление заказа
+        async function checkout() {
+            const token = localStorage.getItem('access_token');
+            try {
+                const response = await fetch('http://localhost:8002/checkout', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    showToast('Заказ успешно оформлен!', 'success');
+                    loadCart(); // Сразу перерисовываем корзину, чтобы обновить статусы
+                } else {
+                    showToast('Ошибка при оформлении заказа', 'error');
+                }
+            } catch (error) {
+                showToast('Сервис заказов недоступен', 'error');
             }
         }
         

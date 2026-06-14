@@ -169,3 +169,24 @@ def get_orders(current_user: dict = Depends(get_current_user)):
     cursor.close()
     conn.close()
     return orders
+
+@app.post("/checkout")
+def checkout_orders(current_user: dict = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Меняем статус с "В корзине" на "Оформлен"
+    cursor.execute(
+        "UPDATE orders SET status = 'Оформлен' WHERE user_id = %s AND status = 'В корзине'",
+        (current_user["id"],)
+    )
+    updated_count = cursor.rowcount # Смотрим, сколько товаров обновилось
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    if updated_count == 0:
+        raise HTTPException(status_code=400, detail="Корзина пуста")
+        
+    return {"message": "Заказ успешно оформлен!"}
