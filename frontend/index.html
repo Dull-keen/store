@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Базовые стили и цвета */
+        body {
+            background-color: #050505; /* Глубокий черный, как в макете */
+            color: #ffffff;
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .serif-text {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+        }
+
+        /* --- ШАПКА САЙТА (HEADER) --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 50px;
+            border-bottom: 1px solid #333; /* Тонкая линия снизу */
+            margin-bottom: 40px;
+            position: relative;
+        }
+        .header-menu {
+            display: flex;
+            gap: 30px;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .header-menu a {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .header-menu a:hover { color: #888; }
+        .logo {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .logo img { height: 90px; } /* Логотип с крыльями */
+
+        /* --- СТРУКТУРА СТРАНИЦ --- */
+        .page-section {
+            display: none; /* Скрываем все секции по умолчанию */
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .page-section.active {
+            display: block; /* Показываем только активную */
+        }
+
+        /* --- ГЛАВНАЯ СТРАНИЦА --- */
+        .main-page-content {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .main-huge-arch {
+            width: 100%;
+            max-width: 500px;
+            height: 600px;
+            object-fit: cover;
+            border-radius: 300px 300px 0 0;
+            border: 1px solid #444;
+            margin-bottom: 40px;
+        }
+        .main-page-content h1 {
+            font-size: 56px;
+            margin-bottom: 30px;
+        }
+        .main-page-content p {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #ccc;
+            text-align: left;
+        }
+
+        /* --- КАТАЛОГ --- */
+        .catalog-header {
+            text-align: center;
+            font-size: 42px;
+            margin-bottom: 50px;
+        }
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 колонки */
+            gap: 50px;
+        }
+
+        /* --- КАРТОЧКА ТОВАРА --- */
+        .product-card {
+            position: relative;
+        }
+        .image-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .image-arch {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-radius: 150px 150px 0 0;
+            border: 1px solid #444; /* Тонкая рамка арки */
+        }
+        
+        /* Круглая кнопка корзины (как в макете) */
+        .cart-btn {
+            position: absolute;
+            right: -15px; /* Смещаем за край арки */
+            top: 50%;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 1px solid #fff;
+            background-color: #050505;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+        .cart-btn:hover {
+            background-color: #fff;
+            color: #000;
+        }
+
+        /* Тексты под карточкой */
+        .card-info-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        .card-title {
+            font-size: 18px;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            line-height: 1.3;
+        }
+        .card-price {
+            font-size: 14px;
+            color: #aaa;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-menu">
+            <a onclick="showPage('catalog')">Новинки</a>
+            <a onclick="showPage('catalog')">Ожерелья</a>
+            <a onclick="showPage('catalog')">Комплекты</a>
+        </div>
+        
+        <div class="logo">
+            <a onclick="showPage('main')" style="cursor:pointer;"><img src="logo.png" alt="Логотип" onerror="this.style.display='none'"></a>
+        </div>
+
+        <div class="header-menu">
+            <a onclick="alert('Для поиска нужен отдельный микросервис!')">Поиск</a>
+            <a href="http://localhost:8002/orders" target="_blank">Корзина</a>
+        </div>
+    </header>
+
+    <section id="main-page" class="page-section active">
+        <div class="main-page-content">
+            <img src="main-arch.png" class="main-huge-arch" alt="О магазине" onerror="this.style.backgroundColor='#111'">
+            
+            <h1 class="serif-text">О магазине</h1>
+            <p>Добро пожаловать в наш магазин авторских украшений ручной работы. Мы создаем уникальные украшения с душой — каждое изделие изготавливается вручную с особой любовью и вниманием к деталям. В нашем ассортименте вы найдете нежные ожерелья, браслеты и серьги, а также возможность создать украшение на заказ по вашему вкусу и желанию!</p>
+        </div>
+    </section>
+
+    <section id="catalog-page" class="page-section">
+        <h1 class="catalog-header serif-text">Ожерелья</h1>
+        
+        <div id="products-container" class="catalog-grid"></div>
+    </section>
+
+
+    <script>
+        // Функция переключения страниц
+        function showPage(pageName) {
+            // Прячем обе секции
+            document.getElementById('main-page').classList.remove('active');
+            document.getElementById('catalog-page').classList.remove('active');
+            
+            // Показываем нужную
+            if(pageName === 'main') {
+                document.getElementById('main-page').classList.add('active');
+            } else {
+                document.getElementById('catalog-page').classList.add('active');
+                // Если зашли в каталог, загружаем товары
+                loadProducts();
+            }
+        }
+
+        // Отправка заказа в микросервис заказов
+        async function buyProduct(id, name) {
+            try {
+                const response = await fetch('http://localhost:8002/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ item_id: id, item_name: name })
+                });
+                const result = await response.json();
+                alert(`Успешно! Товар "${name}" добавлен. Заказ №${result.order.order_id}`);
+            } catch (error) {
+                alert('Ошибка соединения с микросервисом заказов.');
+            }
+        }
+
+        // Получение каталога из микросервиса
+        async function loadProducts() {
+            try {
+                const response = await fetch('http://localhost:8001/products');
+                const products = await response.json();
+                const container = document.getElementById('products-container');
+                container.innerHTML = ''; // Очищаем перед загрузкой
+
+                products.forEach(product => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    
+                    // Верстка карточки точно по макету
+                    card.innerHTML = `
+                        <div class="image-wrapper">
+                            <img src="${product.image}" class="image-arch" alt="${product.name}" onerror="this.style.backgroundColor='#111'">
+                            <button class="cart-btn" onclick="buyProduct(${product.id}, '${product.name}')">+</button>
+                        </div>
+                        <div class="card-info-top">
+                            <span>МАРМЕЛАДНАЯ</span>
+                            <span>В НАЛИЧИИ</span>
+                        </div>
+                        <h3 class="card-title serif-text">${product.name}</h3>
+                        <div class="card-price">${product.price} ₽</div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                document.getElementById('products-container').innerHTML = '<p style="text-align:center;">База данных каталога недоступна.</p>';
+            }
+        }
+    </script>
+
+</body>
+</html>
