@@ -72,7 +72,7 @@
             <a onclick="showPage('main')" style="cursor:pointer;"><img src="logo.png" alt="Логотип" onerror="this.style.display='none'"></a>
         </div>
         <div class="header-menu">
-            <a href="http://localhost:8002/orders" target="_blank">Корзина</a>
+            <a onclick="showPage('cart')" style="cursor:pointer;">Корзина</a>
             <a id="auth-btn" onclick="openAuthModal()">Профиль</a> 
         </div>
     </header>
@@ -88,6 +88,11 @@
     <section id="catalog-page" class="page-section">
         <h1 class="catalog-header serif-text">Ожерелья</h1>
         <div id="products-container" class="catalog-grid"></div>
+    </section>
+
+    <section id="cart-page" class="page-section">
+        <h1 class="catalog-header serif-text">Ваша корзина</h1>
+        <div id="cart-container" style="max-width: 800px; margin: 0 auto;"></div>
     </section>
 
     <div id="toast-container"></div>
@@ -198,13 +203,20 @@
 
         // --- СТАРЫЕ ФУНКЦИИ (ОБНОВЛЕННЫЕ ПОД УВЕДОМЛЕНИЯ) ---
         function showPage(pageName) {
+            // Прячем ВСЕ секции
             document.getElementById('main-page').classList.remove('active');
             document.getElementById('catalog-page').classList.remove('active');
+            document.getElementById('cart-page').classList.remove('active');
+            
+            // Показываем нужную
             if(pageName === 'main') {
                 document.getElementById('main-page').classList.add('active');
-            } else {
+            } else if(pageName === 'catalog') {
                 document.getElementById('catalog-page').classList.add('active');
                 loadProducts();
+            } else if(pageName === 'cart') {
+                document.getElementById('cart-page').classList.add('active');
+                loadCart(); // Вызываем новую функцию загрузки корзины
             }
         }
 
@@ -272,6 +284,57 @@
                 document.getElementById('products-container').innerHTML = '<p style="text-align:center;">База данных каталога недоступна.</p>';
             }
         }
+
+        async function loadCart() {
+            const token = localStorage.getItem('access_token');
+            const container = document.getElementById('cart-container');
+            
+            if (!token) {
+                container.innerHTML = '<p style="text-align:center; color: #aaa;">Войдите в профиль, чтобы просматривать корзину.</p>';
+                return;
+            }
+
+            try {
+                // Делаем запрос, ПРИКЛАДЫВАЯ ТОКЕН
+                const response = await fetch('http://localhost:8002/orders', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    container.innerHTML = '<p style="text-align:center; color: #aaa;">Сессия истекла. Пожалуйста, авторизуйтесь заново.</p>';
+                    logout();
+                    return;
+                }
+
+                const orders = await response.json();
+
+                if (orders.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color: #aaa;">Ваша корзина пока пуста.</p>';
+                    return;
+                }
+
+                // Очищаем контейнер и рисуем список товаров
+                container.innerHTML = '';
+                orders.forEach(order => {
+                    const item = document.createElement('div');
+                    // Стилизуем строчку заказа под темную тему
+                    item.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 20px 0; align-items: center;";
+                    
+                    item.innerHTML = `
+                        <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase;">
+                            ${order.item_name}
+                        </div>
+                        <div style="color: #aaa; font-size: 12px; letter-spacing: 1px;">
+                            СТАТУС: <span style="color: #fff;">${order.status}</span>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                container.innerHTML = '<p style="text-align:center; color: #8b0000;">Ошибка загрузки корзины.</p>';
+            }
+        }
+        
     </script>
 
 </body>
