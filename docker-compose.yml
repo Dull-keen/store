@@ -5,11 +5,13 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user        # логин
-      POSTGRES_PASSWORD: password # пароль
-      POSTGRES_DB: store_db      # название базы
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: store_db
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     restart: always
 
   catalog-service:
@@ -27,3 +29,6 @@ services:
     depends_on:
       - db  # Заказы тоже ждут базу данных
     restart: always
+    
+volumes:
+  pgdata:
