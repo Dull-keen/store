@@ -71,9 +71,9 @@
 
     <header>
         <div class="header-menu">
-            <a onclick="showPage('catalog')">Новинки</a>
-            <a onclick="showPage('catalog')">Ожерелья</a>
-            <a onclick="showPage('catalog')">Комплекты</a>
+            <a onclick="showPage('catalog', 'Новинки')" style="cursor:pointer;">НОВИНКИ</a>
+            <a onclick="showPage('catalog', 'Ожерелья')" style="cursor:pointer;">ОЖЕРЕЛЬЯ</a>
+            <a onclick="showPage('catalog', 'Комплекты')" style="cursor:pointer;">КОМПЛЕКТЫ</a>
         </div>
         <div class="logo">
             <a onclick="showPage('main')" style="cursor:pointer;"><img src="logo.png" alt="Логотип" onerror="this.style.display='none'"></a>
@@ -93,7 +93,7 @@
     </section>
 
     <section id="catalog-page" class="page-section">
-        <h1 class="catalog-header serif-text">Ожерелья</h1>
+        <h1 id="catalog-title" class="catalog-header serif-text">Ожерелья</h1>
         <div id="products-container" class="catalog-grid"></div>
     </section>
 
@@ -227,7 +227,6 @@
 
         async function loadProducts(filterName) {
             try {
-                // Превращаем название кнопки в параметры для базы данных
                 let queryParam = '';
                 if (filterName === 'Ожерелья') queryParam = 'product_type=Ожерелье';
                 else if (filterName === 'Комплекты') queryParam = 'product_type=Комплект';
@@ -270,6 +269,42 @@
                 });
             } catch (error) {
                 document.getElementById('products-container').innerHTML = '<p style="text-align:center; grid-column: span 3; color: #8b0000;">База данных каталога недоступна.</p>';
+            }
+        }
+
+                async function buyProduct(id, name) {
+            // Берем токен из памяти браузера
+            const token = localStorage.getItem('access_token');
+            
+            // Если токена нет, не даем даже нажать на кнопку и вызываем модалку
+            if (!token) {
+                showToast('Сначала войдите в профиль!', 'error');
+                openAuthModal();
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8002/orders', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // НОВОЕ: Передаем токен серверу!
+                    },
+                    body: JSON.stringify({ item_id: id, item_name: name })
+                });
+                
+                if(response.ok) {
+                    showToast(`В корзину: "${name}"`, 'success');
+                } else if (response.status === 401) {
+                    // Если токен истек или неверный
+                    showToast('Сессия истекла, войдите заново', 'error');
+                    logout();
+                    openAuthModal();
+                } else {
+                    showToast('Ошибка при добавлении в корзину', 'error');
+                }
+            } catch (error) {
+                showToast('Сервис заказов недоступен', 'error');
             }
         }
         
