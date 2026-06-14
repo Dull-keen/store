@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from passlib.context import CryptContext
@@ -17,15 +18,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# НОВОЕ: Настройка для хеширования (превращения пароля в шифр)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SECRET_KEY = "sokolova_store_super_secret"
+ALGORITHM = "HS256"
+
+# НОВОЕ: Указываем FastAPI, где выдаются токены (для красивой работы Swagger)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 class OrderRequest(BaseModel):
     item_id: int
     item_name: str
 
-# НОВОЕ: Формат данных, который мы ждем от фронтенда при регистрации
 class UserRegister(BaseModel):
+    username: str
+    password: str
+
+class UserLogin(BaseModel):
     username: str
     password: str
 
@@ -34,10 +42,7 @@ def get_db_connection():
     while retries > 0:
         try:
             conn = psycopg2.connect(
-                host="db",
-                database="store_db",
-                user="user",
-                password="password"
+                host="db", database="store_db", user="user", password="password"
             )
             return conn
         except psycopg2.OperationalError:
@@ -49,23 +54,22 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Старая таблица заказов
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS orders (
-            order_id SERIAL PRIMARY KEY,
-            item_id INTEGER NOT NULL,
-            item_name VARCHAR(255) NOT NULL,
-            status VARCHAR(50) NOT NULL
-        )
-    ''')
-    
-    # НОВОЕ: Таблица пользователей. 
-    # Обрати внимание на UNIQUE - двух пользователей с одинаковым логином быть не может.
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username VARCHAR(50) UNIQUE NOT NULL,
             password_hash VARCHAR(255) NOT NULL
+        )
+    ''')
+    
+    # НОВОЕ: В таблицу заказов добавлено поле user_id!
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS orders (
+            order_id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id),
+            item_id INTEGER NOT NULL,
+            item_name VARCHAR(255) NOT NULL,
+            status VARCHAR(50) NOT NULL
         )
     ''')
     
@@ -77,87 +81,90 @@ def init_db():
 def on_startup():
     init_db()
 
-# НОВЫЙ ЭНДПОИНТ: Регистрация
+# --- ФЕЙСКОНТРОЛЬ (Проверка токена) ---
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        # Пытаемся расшифровать токен
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Недействительный токен")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Недействительный токен")
+    
+    # Ищем пользователя в базе
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if user is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+    return user # Возвращаем все данные пользователя (включая его ID)
+
+# --- АВТОРИЗАЦИЯ ---
 @app.post("/register")
 def register_user(user: UserRegister):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    # 1. Проверяем, есть ли уже такой пользователь в базе
     cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
     if cursor.fetchone():
         cursor.close()
         conn.close()
-        # Выдаем ошибку, если имя занято
         raise HTTPException(status_code=400, detail="Пользователь с таким именем уже существует")
         
-    # 2. Хешируем пароль (чтобы преподаватель не докопался к безопасности)
     hashed_password = pwd_context.hash(user.password)
-    
-    # 3. Сохраняем в базу (обрати внимание, мы сохраняем ХЕШ, а не сам пароль)
     cursor.execute(
         "INSERT INTO users (username, password_hash) VALUES (%s, %s) RETURNING id",
         (user.username, hashed_password)
     )
     new_user_id = cursor.fetchone()[0]
-    
     conn.commit()
     cursor.close()
     conn.close()
-    
-    return {"message": "Регистрация прошла успешно!", "user_id": new_user_id, "username": user.username}
-
-
-# Секретный ключ для подписи токенов (в реальных проектах его прячут, но для курсовой оставляем так)
-SECRET_KEY = "sokolova_store_super_secret" 
-ALGORITHM = "HS256"
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
+    return {"message": "Успешно!", "user_id": new_user_id, "username": user.username}
 
 @app.post("/login")
 def login_user(user: UserLogin):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # 1. Ищем пользователя в базе
     cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
     db_user = cursor.fetchone()
     cursor.close()
     conn.close()
     
-    # 2. Проверяем, существует ли он и совпадает ли пароль
     if not db_user or not pwd_context.verify(user.password, db_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
         
-    # 3. Генерируем JWT-токен (зашиваем в него имя пользователя и срок действия)
-    expire = datetime.utcnow() + timedelta(hours=24) # Токен "сгорит" через 24 часа
+    expire = datetime.utcnow() + timedelta(hours=24)
     token_data = {"sub": db_user["username"], "exp": expire}
     token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
-    
     return {"access_token": token, "token_type": "bearer", "username": db_user["username"]}
 
-# --- Старые методы для заказов ---
+# --- ЗАКАЗЫ (ТЕПЕРЬ ЗАЩИЩЕНЫ) ---
+# Обрати внимание на Depends(get_current_user) - без токена метод даже не запустится!
 @app.post("/orders")
-def create_order(order: OrderRequest):
+def create_order(order: OrderRequest, current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO orders (item_id, item_name, status) VALUES (%s, %s, %s) RETURNING order_id",
-        (order.item_id, order.item_name, "Оформлен")
+        "INSERT INTO orders (user_id, item_id, item_name, status) VALUES (%s, %s, %s, %s) RETURNING order_id",
+        (current_user["id"], order.item_id, order.item_name, "В корзине") # Сохраняем user_id!
     )
     new_order_id = cursor.fetchone()[0]
     conn.commit()
     cursor.close()
     conn.close()
-    return {"message": "Заказ успешно сохранен в PostgreSQL!", "order": {"order_id": new_order_id, "item_id": order.item_id, "item_name": order.item_name, "status": "Оформлен"}}
+    return {"message": "Успешно!", "order_id": new_order_id}
 
 @app.get("/orders")
-def get_orders():
+def get_orders(current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT order_id, item_id, item_name, status FROM orders")
+    # Выдаем только те заказы, которые принадлежат этому пользователю
+    cursor.execute("SELECT order_id, item_id, item_name, status FROM orders WHERE user_id = %s", (current_user["id"],))
     orders = cursor.fetchall()
     cursor.close()
     conn.close()

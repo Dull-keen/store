@@ -3,164 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Store</title>
+    <title>Sokolova Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* Базовые стили и цвета */
-        body {
-            background-color: #050505; /* Глубокий черный, как в макете */
-            color: #ffffff;
-            font-family: 'Montserrat', sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
+        /* Базовые стили */
+        body { background-color: #050505; color: #ffffff; font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        h1, h2, h3, .serif-text { font-family: 'Playfair Display', serif; font-weight: 400; }
 
-        h1, h2, h3, .serif-text {
-            font-family: 'Playfair Display', serif;
-            font-weight: 400;
-        }
-
-        /* --- ШАПКА САЙТА (HEADER) --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 50px;
-            border-bottom: 1px solid #333; /* Тонкая линия снизу */
-            margin-bottom: 40px;
-            position: relative;
-        }
-        .header-menu {
-            display: flex;
-            gap: 30px;
-            font-size: 11px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-        .header-menu a {
-            color: #fff;
-            text-decoration: none;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
+        /* Шапка */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; border-bottom: 1px solid #333; margin-bottom: 40px; position: relative; }
+        .header-menu { display: flex; gap: 30px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+        .header-menu a { color: #fff; text-decoration: none; cursor: pointer; transition: color 0.3s; }
         .header-menu a:hover { color: #888; }
-        .logo {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        .logo img { height: 90px; } /* Логотип с крыльями */
+        .logo { position: absolute; left: 50%; transform: translateX(-50%); }
+        .logo img { height: 90px; }
 
-        /* --- СТРУКТУРА СТРАНИЦ --- */
-        .page-section {
-            display: none; /* Скрываем все секции по умолчанию */
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        .page-section.active {
-            display: block; /* Показываем только активную */
-        }
+        /* Страницы */
+        .page-section { display: none; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .page-section.active { display: block; }
+        .main-page-content { text-align: center; max-width: 800px; margin: 0 auto; }
+        .main-huge-arch { width: 100%; max-width: 500px; height: 600px; object-fit: cover; border-radius: 300px 300px 0 0; border: 1px solid #444; margin-bottom: 40px; }
+        .main-page-content h1 { font-size: 56px; margin-bottom: 30px; }
+        .main-page-content p { font-size: 14px; line-height: 1.8; color: #ccc; text-align: left; }
 
-        /* --- ГЛАВНАЯ СТРАНИЦА --- */
-        .main-page-content {
-            text-align: center;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .main-huge-arch {
-            width: 100%;
-            max-width: 500px;
-            height: 600px;
-            object-fit: cover;
-            border-radius: 300px 300px 0 0;
-            border: 1px solid #444;
-            margin-bottom: 40px;
-        }
-        .main-page-content h1 {
-            font-size: 56px;
-            margin-bottom: 30px;
-        }
-        .main-page-content p {
-            font-size: 14px;
-            line-height: 1.8;
-            color: #ccc;
-            text-align: left;
-        }
+        /* Каталог и карточки */
+        .catalog-header { text-align: center; font-size: 42px; margin-bottom: 50px; }
+        .catalog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 50px; }
+        .product-card { position: relative; }
+        .image-wrapper { position: relative; margin-bottom: 20px; }
+        .image-arch { width: 100%; height: 400px; object-fit: cover; border-radius: 150px 150px 0 0; border: 1px solid #444; }
+        .cart-btn { position: absolute; right: -15px; top: 50%; width: 46px; height: 46px; border-radius: 50%; border: 1px solid #fff; background-color: #050505; color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .cart-btn:hover { background-color: #fff; color: #000; }
+        .card-info-top { display: flex; justify-content: space-between; font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+        .card-title { font-size: 18px; margin: 0 0 10px 0; text-transform: uppercase; line-height: 1.3; }
+        .card-price { font-size: 14px; color: #aaa; text-align: right; }
 
-        /* --- КАТАЛОГ --- */
-        .catalog-header {
-            text-align: center;
-            font-size: 42px;
-            margin-bottom: 50px;
-        }
-        .catalog-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3 колонки */
-            gap: 50px;
-        }
+        /* --- НОВОЕ: КРАСИВЫЕ УВЕДОМЛЕНИЯ (TOASTS) --- */
+        #toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 9999; display: flex; flex-direction: column; gap: 15px; }
+        .toast { background: #111; color: #fff; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.5); font-size: 14px; opacity: 0; transform: translateX(50px); transition: all 0.4s ease; display: flex; align-items: center; gap: 10px; }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast.success { border-left-color: #a89f91; } /* Под цвет макета */
+        .toast.error { border-left-color: #8b0000; }
 
-        /* --- КАРТОЧКА ТОВАРА --- */
-        .product-card {
-            position: relative;
-        }
-        .image-wrapper {
-            position: relative;
-            margin-bottom: 20px;
-        }
-        .image-arch {
-            width: 100%;
-            height: 400px;
-            object-fit: cover;
-            border-radius: 150px 150px 0 0;
-            border: 1px solid #444; /* Тонкая рамка арки */
-        }
-        
-        /* Круглая кнопка корзины (как в макете) */
-        .cart-btn {
-            position: absolute;
-            right: -15px; /* Смещаем за край арки */
-            top: 50%;
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-            border: 1px solid #fff;
-            background-color: #050505;
-            color: #fff;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.3s;
-        }
-        .cart-btn:hover {
-            background-color: #fff;
-            color: #000;
-        }
-
-        /* Тексты под карточкой */
-        .card-info-top {
-            display: flex;
-            justify-content: space-between;
-            font-size: 10px;
-            color: #888;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-        }
-        .card-title {
-            font-size: 18px;
-            margin: 0 0 10px 0;
-            text-transform: uppercase;
-            line-height: 1.3;
-        }
-        .card-price {
-            font-size: 14px;
-            color: #aaa;
-            text-align: right;
-        }
+        /* --- НОВОЕ: МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: #0a0a0a; border: 1px solid #333; padding: 40px; border-radius: 15px; width: 320px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; font-size: 24px; color: #666; transition: 0.3s; }
+        .close-btn:hover { color: #fff; }
+        .modal-tabs { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; font-family: 'Playfair Display', serif; font-size: 20px; cursor: pointer; color: #555; }
+        .modal-tabs span { transition: 0.3s; padding-bottom: 5px; }
+        .modal-tabs span.active { color: #fff; border-bottom: 1px solid #fff; }
+        .form-input { width: 100%; padding: 12px 15px; margin-bottom: 20px; background: transparent; border: 1px solid #444; color: #fff; border-radius: 5px; font-family: 'Montserrat', sans-serif; box-sizing: border-box; outline: none; transition: border 0.3s; }
+        .form-input:focus { border-color: #aaa; }
+        .submit-btn { width: 100%; padding: 14px; background: #fff; color: #000; border: none; border-radius: 30px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 500; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: 0.3s; }
+        .submit-btn:hover { background: #ddd; }
     </style>
 </head>
 <body>
@@ -171,21 +68,18 @@
             <a onclick="showPage('catalog')">Ожерелья</a>
             <a onclick="showPage('catalog')">Комплекты</a>
         </div>
-        
         <div class="logo">
             <a onclick="showPage('main')" style="cursor:pointer;"><img src="logo.png" alt="Логотип" onerror="this.style.display='none'"></a>
         </div>
-
         <div class="header-menu">
-            <a onclick="alert('Для поиска нужен отдельный микросервис!')">Поиск</a>
             <a href="http://localhost:8002/orders" target="_blank">Корзина</a>
+            <a id="auth-btn" onclick="openAuthModal()">Профиль</a> 
         </div>
     </header>
 
     <section id="main-page" class="page-section active">
         <div class="main-page-content">
             <img src="main-arch.png" class="main-huge-arch" alt="О магазине" onerror="this.style.backgroundColor='#111'">
-            
             <h1 class="serif-text">О магазине</h1>
             <p>Добро пожаловать в наш магазин авторских украшений ручной работы. Мы создаем уникальные украшения с душой — каждое изделие изготавливается вручную с особой любовью и вниманием к деталям. В нашем ассортименте вы найдете нежные ожерелья, браслеты и серьги, а также возможность создать украшение на заказ по вашему вкусу и желанию!</p>
         </div>
@@ -193,56 +87,173 @@
 
     <section id="catalog-page" class="page-section">
         <h1 class="catalog-header serif-text">Ожерелья</h1>
-        
         <div id="products-container" class="catalog-grid"></div>
     </section>
 
+    <div id="toast-container"></div>
+
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="close-btn" onclick="closeAuthModal()">×</span>
+            <div class="modal-tabs">
+                <span id="tab-login" class="active" onclick="switchAuthTab('login')">Вход</span>
+                <span id="tab-register" onclick="switchAuthTab('register')">Регистрация</span>
+            </div>
+            <form id="auth-form" onsubmit="handleAuth(event)">
+                <input type="text" id="username" class="form-input" placeholder="Логин" required>
+                <input type="password" id="password" class="form-input" placeholder="Пароль" required>
+                <button type="submit" id="auth-submit-btn" class="submit-btn">Войти</button>
+            </form>
+        </div>
+    </div>
 
     <script>
-        // Функция переключения страниц
+        // --- СИСТЕМА УВЕДОМЛЕНИЙ ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = message;
+            
+            container.appendChild(toast);
+            
+            // Анимация появления
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Анимация исчезновения
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400); // удаляем из HTML после того как скроется
+            }, 3000);
+        }
+
+        // --- ЛОГИКА АВТОРИЗАЦИИ ---
+        let currentAuthMode = 'login'; // 'login' или 'register'
+
+        // Проверяем при загрузке, есть ли токен в браузере
+        window.onload = () => {
+            const token = localStorage.getItem('access_token');
+            const username = localStorage.getItem('username');
+            if(token && username) {
+                document.getElementById('auth-btn').innerText = `Выйти (${username})`;
+                document.getElementById('auth-btn').onclick = logout;
+            }
+        };
+
+        function openAuthModal() { document.getElementById('auth-modal').classList.add('active'); }
+        function closeAuthModal() { document.getElementById('auth-modal').classList.remove('active'); }
+
+        function switchAuthTab(mode) {
+            currentAuthMode = mode;
+            document.getElementById('tab-login').classList.remove('active');
+            document.getElementById('tab-register').classList.remove('active');
+            document.getElementById(`tab-${mode}`).classList.add('active');
+            document.getElementById('auth-submit-btn').innerText = mode === 'login' ? 'Войти' : 'Создать аккаунт';
+        }
+
+        async function handleAuth(event) {
+            event.preventDefault(); // Останавливаем перезагрузку страницы
+            const usernameInput = document.getElementById('username').value;
+            const passwordInput = document.getElementById('password').value;
+            const endpoint = currentAuthMode === 'login' ? '/login' : '/register';
+
+            try {
+                const response = await fetch(`http://localhost:8002${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: usernameInput, password: passwordInput })
+                });
+                
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (currentAuthMode === 'login') {
+                        // Сохраняем токен и имя в память браузера
+                        localStorage.setItem('access_token', data.access_token);
+                        localStorage.setItem('username', data.username);
+                        document.getElementById('auth-btn').innerText = `Выйти (${data.username})`;
+                        document.getElementById('auth-btn').onclick = logout;
+                        showToast(`С возвращением, ${data.username}!`, 'success');
+                        closeAuthModal();
+                    } else {
+                        showToast('Успешная регистрация! Теперь войдите.', 'success');
+                        switchAuthTab('login'); // Переключаем на вкладку входа
+                    }
+                } else {
+                    showToast(data.detail || 'Ошибка авторизации', 'error');
+                }
+            } catch (error) {
+                showToast('Ошибка соединения с сервером', 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('username');
+            document.getElementById('auth-btn').innerText = 'Профиль';
+            document.getElementById('auth-btn').onclick = openAuthModal;
+            showToast('Вы вышли из профиля', 'success');
+        }
+
+
+        // --- СТАРЫЕ ФУНКЦИИ (ОБНОВЛЕННЫЕ ПОД УВЕДОМЛЕНИЯ) ---
         function showPage(pageName) {
-            // Прячем обе секции
             document.getElementById('main-page').classList.remove('active');
             document.getElementById('catalog-page').classList.remove('active');
-            
-            // Показываем нужную
             if(pageName === 'main') {
                 document.getElementById('main-page').classList.add('active');
             } else {
                 document.getElementById('catalog-page').classList.add('active');
-                // Если зашли в каталог, загружаем товары
                 loadProducts();
             }
         }
 
-        // Отправка заказа в микросервис заказов
         async function buyProduct(id, name) {
+            // Берем токен из памяти браузера
+            const token = localStorage.getItem('access_token');
+            
+            // Если токена нет, не даем даже нажать на кнопку и вызываем модалку
+            if (!token) {
+                showToast('Сначала войдите в профиль!', 'error');
+                openAuthModal();
+                return;
+            }
+
             try {
                 const response = await fetch('http://localhost:8002/orders', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // НОВОЕ: Передаем токен серверу!
+                    },
                     body: JSON.stringify({ item_id: id, item_name: name })
                 });
-                const result = await response.json();
-                alert(`Успешно! Товар "${name}" добавлен. Заказ №${result.order.order_id}`);
+                
+                if(response.ok) {
+                    showToast(`В корзину: "${name}"`, 'success');
+                } else if (response.status === 401) {
+                    // Если токен истек или неверный
+                    showToast('Сессия истекла, войдите заново', 'error');
+                    logout();
+                    openAuthModal();
+                } else {
+                    showToast('Ошибка при добавлении в корзину', 'error');
+                }
             } catch (error) {
-                alert('Ошибка соединения с микросервисом заказов.');
+                showToast('Сервис заказов недоступен', 'error');
             }
         }
 
-        // Получение каталога из микросервиса
         async function loadProducts() {
             try {
                 const response = await fetch('http://localhost:8001/products');
                 const products = await response.json();
                 const container = document.getElementById('products-container');
-                container.innerHTML = ''; // Очищаем перед загрузкой
+                container.innerHTML = ''; 
 
                 products.forEach(product => {
                     const card = document.createElement('div');
                     card.className = 'product-card';
-                    
-                    // Верстка карточки точно по макету
                     card.innerHTML = `
                         <div class="image-wrapper">
                             <img src="${product.image}" class="image-arch" alt="${product.name}" onerror="this.style.backgroundColor='#111'">
