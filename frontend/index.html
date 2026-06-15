@@ -222,6 +222,15 @@
             }, 3000);
         }
 
+        // НОВАЯ ФУНКЦИЯ: проверяет, какая страница сейчас открыта, и перезагружает её данные
+        function refreshCurrentView() {
+            if (document.getElementById('cart-page').classList.contains('active')) {
+                loadCart();
+            } else if (document.getElementById('orders-page') && document.getElementById('orders-page').classList.contains('active')) {
+                loadOrders();
+            }
+        }
+
         let currentAuthMode = 'login'; 
 
         window.onload = () => {
@@ -234,7 +243,10 @@
         };
 
         function openAuthModal() { document.getElementById('auth-modal').classList.add('active'); }
-        function closeAuthModal() { document.getElementById('auth-modal').classList.remove('active'); }
+        function closeAuthModal() { 
+            document.getElementById('auth-modal').classList.remove('active'); 
+            document.getElementById('auth-form').reset();
+        }
 
         function switchAuthTab(mode) {
             currentAuthMode = mode;
@@ -267,8 +279,11 @@
                         document.getElementById('auth-btn').onclick = logout;
                         showToast(`С возвращением, ${data.username}!`, 'success');
                         closeAuthModal();
+
+                        refreshCurrentView();
                     } else {
                         showToast('Успешная регистрация! Теперь войдите.', 'success');
+                        document.getElementById('auth-form').reset();
                         switchAuthTab('login'); 
                     }
                 } else {
@@ -285,6 +300,8 @@
             document.getElementById('auth-btn').innerText = 'Профиль';
             document.getElementById('auth-btn').onclick = openAuthModal;
             showToast('Вы вышли из профиля', 'success');
+
+            refreshCurrentView();
         }
 
         function showPage(pageName, filterName = 'Ожерелья') {
