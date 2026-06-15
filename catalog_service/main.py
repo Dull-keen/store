@@ -1,6 +1,6 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -94,7 +94,6 @@ def init_db():
 def on_startup():
     init_db()
 
-# Эндпоинт для добавления товаров в базу
 @app.post("/admin/products")
 def add_product(product: ProductCreate):
     conn = get_db_connection()
@@ -132,3 +131,44 @@ def get_products(product_type: Optional[str] = None, is_new: Optional[bool] = No
     cursor.close()
     conn.close()
     return products
+
+class ReserveRequest(BaseModel):
+    item_id: int
+    quantity: int = 1
+
+@app.post("/reserve")
+def reserve_product(req: ReserveRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Атомарное списание: отнимаем товар, только если его хватает (stock >= quantity)
+    cursor.execute(
+        "UPDATE catalog_products SET stock = stock - %s WHERE id = %s AND stock >= %s", 
+        (req.quantity, req.item_id, req.quantity)
+    )
+    updated = cursor.rowcount
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    # Если ни одна строка не обновилась, значит товара нет в наличии
+    if updated == 0:
+        raise HTTPException(status_code=400, detail="Товар закончился на складе")
+
+    return {"message": "Товар зарезервирован"}
+
+@app.post("/release")
+def release_product(req: ReserveRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Возвращаем товар на склад (при удалении из корзины)
+    cursor.execute(
+        "UPDATE catalog_products SET stock = stock + %s WHERE id = %s", 
+        (req.quantity, req.item_id)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return {"message": "Товар возвращен на склад"}

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Наш новый сервер базы данных PostgreSQL
   db:

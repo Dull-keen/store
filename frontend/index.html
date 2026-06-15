@@ -63,7 +63,7 @@
         </div>
         <div class="header-menu">
             <a onclick="showPage('cart')" style="cursor:pointer;">Корзина</a>
-            <a id="auth-btn" onclick="openAuthModal()">Профиль</a> 
+            <a onclick="showPage('orders')" style="cursor:pointer;">Заказы</a> <a id="auth-btn" onclick="openAuthModal()">Профиль</a> 
         </div>
     </header>
 
@@ -71,7 +71,7 @@
         <div class="main-page-content">
             <img src="main-arch.png" class="main-huge-arch" alt="О магазине" onerror="this.style.backgroundColor='#111'">
             <h1 class="serif-text">О магазине</h1>
-            <p>Добро пожаловать в наш магазин авторских украшений ручной работы. Мы создаем уникальные украшения с душой — каждое изделие изготавливается вручную с особой любовью и вниманием к деталям. В нашем ассортименте вы найдете нежные ожерелья, браслеты и серьги, а также возможность создать украшение на заказ по вашему вкусу и желанию!</p>
+            <p>Добро пожаловать в наш магазин авторских украшений ручной работы. Мы создаем уникальные украшения с душой — каждое изделие изготавливается вручную с особой любовью и вниманием к деталям. В нашем ассортименте вы найдете нежные ожерелья, браслеты и серьги!</p>
         </div>
     </section>
 
@@ -83,6 +83,11 @@
     <section id="cart-page" class="page-section">
         <h1 class="catalog-header serif-text">Ваша корзина</h1>
         <div id="cart-container" style="max-width: 800px; margin: 0 auto;"></div>
+    </section>
+
+    <section id="orders-page" class="page-section">
+        <h1 class="catalog-header serif-text">История ваших заказов</h1>
+        <div id="orders-container" style="max-width: 800px; margin: 0 auto;"></div>
     </section>
 
     <div id="toast-container"></div>
@@ -187,6 +192,7 @@
             document.getElementById('main-page').classList.remove('active');
             document.getElementById('catalog-page').classList.remove('active');
             document.getElementById('cart-page').classList.remove('active');
+            document.getElementById('orders-page').classList.remove('active'); // Скрываем историю
             
             if(pageName === 'main') {
                 document.getElementById('main-page').classList.add('active');
@@ -197,6 +203,9 @@
             } else if(pageName === 'cart') {
                 document.getElementById('cart-page').classList.add('active');
                 loadCart();
+            } else if(pageName === 'orders') {
+                document.getElementById('orders-page').classList.add('active'); // Показываем историю
+                loadOrders(); // Вызываем новую функцию загрузки заказов
             }
         }
 
@@ -297,6 +306,17 @@
             }
 
             try {
+                // 1. Получаем карту картинок из сервиса каталога
+                let productMap = {};
+                try {
+                    const productsResponse = await fetch('http://localhost:8001/products');
+                    const allProducts = await productsResponse.json();
+                    allProducts.forEach(p => { productMap[p.id] = p.image; });
+                } catch (e) {
+                    console.error("Не удалось загрузить изображения товаров", e);
+                }
+
+                // 2. Получаем все позиции из сервиса заказов
                 const response = await fetch('http://localhost:8002/orders', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -308,53 +328,166 @@
                 }
 
                 const orders = await response.json();
+                
+                // Фильтруем ТОЛЬКО те, что реально лежат в корзине (не оформлены)
+                const cartItems = orders.filter(order => order.status === 'В корзине');
 
-                if (orders.length === 0) {
+                if (cartItems.length === 0) {
                     container.innerHTML = '<p style="text-align:center; color: #aaa;">Ваша корзина пока пуста.</p>';
                     return;
                 }
 
                 container.innerHTML = '';
-                let hasPendingItems = false; 
 
-                orders.forEach(order => {
-                    if (order.status === 'В корзине') hasPendingItems = true;
+                // 3. Склеиваем одинаковые позиции
+                const grouped = {};
+                cartItems.forEach(order => {
+                    if (!grouped[order.item_id]) {
+                        grouped[order.item_id] = {
+                            item_id: order.item_id,
+                            item_name: order.item_name,
+                            order_ids: [], // Сохраняем ID всех этих ордеров в базе для удаления по одному
+                            count: 0
+                        };
+                    }
+                    grouped[order.item_id].order_ids.push(order.order_id);
+                    grouped[order.item_id].count += 1;
+                });
 
+                // 4. Отрендерим сгруппированные товары с превью
+                Object.values(grouped).forEach(group => {
                     const item = document.createElement('div');
                     item.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 20px 0; align-items: center;";
                     
-                    const opacity = order.status === 'Оформлен' ? '0.5' : '1';
-
-                    const deleteBtn = order.status === 'В корзине' 
-                        ? `<span onclick="removeFromCart(${order.order_id})" style="cursor:pointer; color: #8b0000; font-size: 24px; margin-left: 15px; transition: 0.3s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color='#8b0000'">×</span>` 
+                    const imageUrl = productMap[group.item_id] || '';
+                    const imgHtml = imageUrl 
+                        ? `<img src="${imageUrl}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 20px; border: 1px solid #444;" onerror="this.style.backgroundColor='#111'">`
                         : '';
 
+                    // При нажатии на крестик удаляем первый попавшийся order_id из этой группы
+                    const firstOrderId = group.order_ids[0];
+                    const deleteBtn = `<span onclick="removeFromCart(${firstOrderId})" style="cursor:pointer; color: #8b0000; font-size: 24px; margin-left: 15px; transition: 0.3s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color='#8b0000'">×</span>`;
+
                     item.innerHTML = `
-                        <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase; opacity: ${opacity}; display: flex; align-items: center;">
-                            ${order.item_name} ${deleteBtn}
+                        <div style="display: flex; align-items: center;">
+                            ${imgHtml}
+                            <div>
+                                <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase; display: flex; align-items: center;">
+                                    ${group.item_name} ${deleteBtn}
+                                </div>
+                                <div style="color: #aaa; font-size: 13px; margin-top: 5px; font-family: 'Montserrat', sans-serif;">
+                                    Количество: <span style="color: #fff; font-weight: bold;">${group.count} шт.</span>
+                                </div>
+                            </div>
                         </div>
                         <div style="color: #aaa; font-size: 12px; letter-spacing: 1px;">
-                            СТАТУС: <span style="color: ${order.status === 'Оформлен' ? '#a89f91' : '#fff'};">${order.status}</span>
+                            СТАТУС: <span style="color: #fff;">В КОРЗИНЕ</span>
                         </div>
                     `;
                     container.appendChild(item);
                 });
 
-                if (hasPendingItems) {
-                    const checkoutDiv = document.createElement('div');
-                    checkoutDiv.style.cssText = "margin-top: 40px; text-align: right; border-top: 1px solid #333; padding-top: 30px;";
-                    checkoutDiv.innerHTML = `
-                        <div style="margin-bottom: 25px; display: flex; justify-content: flex-end; gap: 15px;">
-                            <input type="text" placeholder="Промокод" class="form-input" style="width: 200px; margin: 0; padding: 10px;">
-                            <button onclick="showToast('Промокод применен!', 'success')" class="submit-btn" style="width: 150px; background: transparent; color: #fff; border: 1px solid #fff; padding: 10px;">Применить</button>
-                        </div>
-                        <button onclick="checkout()" class="submit-btn" style="width: 250px; font-size: 14px; padding: 15px;">Оформить заказ</button>
-                    `;
-                    container.appendChild(checkoutDiv);
-                }
+                // Добавляем кнопку оформления, если в корзине что-то есть
+                const checkoutDiv = document.createElement('div');
+                checkoutDiv.style.cssText = "margin-top: 40px; text-align: right; border-top: 1px solid #333; padding-top: 30px;";
+                checkoutDiv.innerHTML = `
+                    <div style="margin-bottom: 25px; display: flex; justify-content: flex-end; gap: 15px;">
+                        <input type="text" placeholder="Промокод" class="form-input" style="width: 200px; margin: 0; padding: 10px;">
+                        <button onclick="showToast('Промокод применен!', 'success')" class="submit-btn" style="width: 150px; background: transparent; color: #fff; border: 1px solid #fff; padding: 10px;">Применить</button>
+                    </div>
+                    <button onclick="checkout()" class="submit-btn" style="width: 250px; font-size: 14px; padding: 15px;">Оформить заказ</button>
+                `;
+                container.appendChild(checkoutDiv);
 
             } catch (error) {
                 container.innerHTML = '<p style="text-align:center; color: #8b0000;">Ошибка загрузки корзины.</p>';
+            }
+        }
+
+        async function loadOrders() {
+            const token = localStorage.getItem('access_token');
+            const container = document.getElementById('orders-container');
+            
+            if (!token) {
+                container.innerHTML = '<p style="text-align:center; color: #aaa;">Войдите в профиль, чтобы просматривать историю заказов.</p>';
+                return;
+            }
+
+            try {
+                // Подгружаем изображения
+                let productMap = {};
+                try {
+                    const productsResponse = await fetch('http://localhost:8001/products');
+                    const allProducts = await productsResponse.json();
+                    allProducts.forEach(p => { productMap[p.id] = p.image; });
+                } catch (e) {}
+
+                const response = await fetch('http://localhost:8002/orders', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    container.innerHTML = '<p style="text-align:center; color: #aaa;">Сессия истекла. Пожалуйста, авторизуйтесь заново.</p>';
+                    logout();
+                    return;
+                }
+
+                const orders = await response.json();
+                
+                // Фильтруем только те, у которых статус "Оформлен"
+                const orderedItems = orders.filter(order => order.status === 'Оформлен');
+
+                if (orderedItems.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color: #aaa;">У вас пока нет оформленных заказов.</p>';
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                // Группируем для аккуратного вывода купленного количества
+                const grouped = {};
+                orderedItems.forEach(order => {
+                    if (!grouped[order.item_id]) {
+                        grouped[order.item_id] = {
+                            item_id: order.item_id,
+                            item_name: order.item_name,
+                            count: 0
+                        };
+                    }
+                    grouped[order.item_id].count += 1;
+                });
+
+                // Отрендерим оформленные заказы
+                Object.values(grouped).forEach(group => {
+                    const item = document.createElement('div');
+                    item.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 20px 0; align-items: center; opacity: 0.85;";
+                    
+                    const imageUrl = productMap[group.item_id] || '';
+                    const imgHtml = imageUrl 
+                        ? `<img src="${imageUrl}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 20px; border: 1px solid #444; filter: grayscale(30%);" onerror="this.style.backgroundColor='#111'">`
+                        : '';
+
+                    item.innerHTML = `
+                        <div style="display: flex; align-items: center;">
+                            ${imgHtml}
+                            <div>
+                                <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase; color: #ccc;">
+                                    ${group.item_name}
+                                </div>
+                                <div style="color: #888; font-size: 13px; margin-top: 5px; font-family: 'Montserrat', sans-serif;">
+                                    Было куплено: ${group.count} шт.
+                                </div>
+                            </div>
+                        </div>
+                        <div style="color: #a89f91; font-size: 12px; letter-spacing: 1px; font-weight: 500;">
+                            СТАТУС: ОФОРМЛЕН
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+
+            } catch (error) {
+                container.innerHTML = '<p style="text-align:center; color: #8b0000;">Ошибка загрузки истории заказов.</p>';
             }
         }
 

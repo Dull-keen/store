@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 import time
 import jwt
 from datetime import datetime, timedelta
+import requests
 
 app = FastAPI(title="Сервис Заказов и Пользователей")
 
@@ -21,6 +22,7 @@ app.add_middleware(
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = "sokolova_store_super_secret"
 ALGORITHM = "HS256"
+CATALOG_SERVICE_URL = "http://catalog-service:8001"
 
 # НОВОЕ: Указываем FastAPI, где выдаются токены (для красивой работы Swagger)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -147,11 +149,25 @@ def login_user(user: UserLogin):
 # Обрати внимание на Depends(get_current_user) - без токена метод даже не запустится!
 @app.post("/orders")
 def create_order(order: OrderRequest, current_user: dict = Depends(get_current_user)):
+    # 1. Сначала просим сервис каталога зарезервировать товар
+    try:
+        response = requests.post(
+            f"{CATALOG_SERVICE_URL}/reserve", 
+            json={"item_id": order.item_id, "quantity": 1},
+            timeout=5
+        )
+        # Если каталог ответил ошибкой (например, 400), значит товара нет
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Этого товара больше нет в наличии")
+    except requests.exceptions.RequestException:
+        raise HTTPException(status_code=503, detail="Сервис каталога временно недоступен")
+
+    # 2. Если товар успешно зарезервирован, добавляем его в корзину пользователя
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO orders (user_id, item_id, item_name, status) VALUES (%s, %s, %s, %s) RETURNING order_id",
-        (current_user["id"], order.item_id, order.item_name, "В корзине") # Сохраняем user_id!
+        (current_user["id"], order.item_id, order.item_name, "В корзине")
     )
     new_order_id = cursor.fetchone()[0]
     conn.commit()
@@ -194,22 +210,38 @@ def checkout_orders(current_user: dict = Depends(get_current_user)):
 @app.delete("/orders/{order_id}")
 def delete_order(order_id: int, current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Удаляем товар по его ID. 
-    # ВАЖНО: проверяем user_id, чтобы хакер не мог удалить чужой заказ!
-    # И разрешаем удалять только то, что еще "В корзине" (оформленные отменять нельзя).
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    # 1. Узнаем item_id удаляемого товара из нашей БД
+    cursor.execute(
+        "SELECT item_id FROM orders WHERE order_id = %s AND user_id = %s AND status = 'В корзине'",
+        (order_id, current_user["id"])
+    )
+    order = cursor.fetchone()
+
+    if not order:
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail="Товар не найден или уже оформлен")
+
+    # 2. Просим каталог вернуть товар на виртуальный склад
+    try:
+        requests.post(
+            f"{CATALOG_SERVICE_URL}/release", 
+            json={"item_id": order["item_id"], "quantity": 1},
+            timeout=5
+        )
+    except requests.exceptions.RequestException:
+        # Для курсовой просто игнорируем, в реальности тут нужна система повторных попыток (retry)
+        pass 
+
+    # 3. Удаляем товар из корзины
     cursor.execute(
         "DELETE FROM orders WHERE order_id = %s AND user_id = %s AND status = 'В корзине'",
         (order_id, current_user["id"])
     )
-    deleted_count = cursor.rowcount
-    
     conn.commit()
     cursor.close()
     conn.close()
-    
-    if deleted_count == 0:
-        raise HTTPException(status_code=400, detail="Товар не найден или уже оформлен")
-        
+
     return {"message": "Товар успешно удален из корзины"}
