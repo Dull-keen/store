@@ -3,37 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sokolova Store</title>
+    <title>Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* Базовые стили */
         body { background-color: #050505; color: #ffffff; font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
         h1, h2, h3, .serif-text { font-family: 'Playfair Display', serif; font-weight: 400; }
-
-        /* Шапка */
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; border-bottom: 1px solid #333; margin-bottom: 40px; position: relative; }
         .header-menu { display: flex; gap: 30px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
         .header-menu a { color: #fff; text-decoration: none; cursor: pointer; transition: color 0.3s; }
         .header-menu a:hover { color: #888; }
         .logo { position: absolute; left: 50%; transform: translateX(-50%); }
         .logo img { height: 90px; }
-
-        /* Страницы */
         .page-section { display: none; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .page-section.active { 
-            display: block; 
-            animation: fadeIn 0.4s ease-out forwards; 
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .page-section.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .main-page-content { text-align: center; max-width: 800px; margin: 0 auto; }
         .main-huge-arch { width: 100%; max-width: 500px; height: 600px; object-fit: cover; border-radius: 300px 300px 0 0; border: 1px solid #444; margin-bottom: 40px; }
         .main-page-content h1 { font-size: 56px; margin-bottom: 30px; }
         .main-page-content p { font-size: 14px; line-height: 1.8; color: #ccc; text-align: left; }
-
-        /* Каталог и карточки */
         .catalog-header { text-align: center; font-size: 42px; margin-bottom: 50px; }
         .catalog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 50px; }
         .product-card { position: relative; }
@@ -44,15 +31,11 @@
         .card-info-top { display: flex; justify-content: space-between; font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
         .card-title { font-size: 18px; margin: 0 0 10px 0; text-transform: uppercase; line-height: 1.3; }
         .card-price { font-size: 14px; color: #aaa; text-align: right; }
-
-        /* --- НОВОЕ: КРАСИВЫЕ УВЕДОМЛЕНИЯ (TOASTS) --- */
         #toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 9999; display: flex; flex-direction: column; gap: 15px; }
         .toast { background: #111; color: #fff; padding: 15px 25px; border-radius: 8px; border-left: 4px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.5); font-size: 14px; opacity: 0; transform: translateX(50px); transition: all 0.4s ease; display: flex; align-items: center; gap: 10px; }
         .toast.show { opacity: 1; transform: translateX(0); }
-        .toast.success { border-left-color: #a89f91; } /* Под цвет макета */
+        .toast.success { border-left-color: #a89f91; } 
         .toast.error { border-left-color: #8b0000; }
-
-        /* --- НОВОЕ: МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ --- */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-overlay.active { display: flex; }
         .modal-box { background: #0a0a0a; border: 1px solid #333; padding: 40px; border-radius: 15px; width: 320px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
@@ -71,9 +54,9 @@
 
     <header>
         <div class="header-menu">
-            <a onclick="showPage('catalog', 'Новинки')" style="cursor:pointer;">НОВИНКИ</a>
-            <a onclick="showPage('catalog', 'Ожерелья')" style="cursor:pointer;">ОЖЕРЕЛЬЯ</a>
-            <a onclick="showPage('catalog', 'Комплекты')" style="cursor:pointer;">КОМПЛЕКТЫ</a>
+            <a onclick="showPage('catalog', 'Новинки')">Новинки</a>
+            <a onclick="showPage('catalog', 'Ожерелья')">Ожерелья</a>
+            <a onclick="showPage('catalog', 'Комплекты')">Комплекты</a>
         </div>
         <div class="logo">
             <a onclick="showPage('main')" style="cursor:pointer;"><img src="logo.png" alt="Логотип" onerror="this.style.display='none'"></a>
@@ -120,7 +103,6 @@
     </div>
 
     <script>
-        // --- СИСТЕМА УВЕДОМЛЕНИЙ ---
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -129,20 +111,15 @@
             
             container.appendChild(toast);
             
-            // Анимация появления
             setTimeout(() => toast.classList.add('show'), 10);
-            
-            // Анимация исчезновения
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 400); // удаляем из HTML после того как скроется
+                setTimeout(() => toast.remove(), 400); 
             }, 3000);
         }
 
-        // --- ЛОГИКА АВТОРИЗАЦИИ ---
-        let currentAuthMode = 'login'; // 'login' или 'register'
+        let currentAuthMode = 'login'; 
 
-        // Проверяем при загрузке, есть ли токен в браузере
         window.onload = () => {
             const token = localStorage.getItem('access_token');
             const username = localStorage.getItem('username');
@@ -164,7 +141,7 @@
         }
 
         async function handleAuth(event) {
-            event.preventDefault(); // Останавливаем перезагрузку страницы
+            event.preventDefault(); 
             const usernameInput = document.getElementById('username').value;
             const passwordInput = document.getElementById('password').value;
             const endpoint = currentAuthMode === 'login' ? '/login' : '/register';
@@ -180,7 +157,6 @@
 
                 if (response.ok) {
                     if (currentAuthMode === 'login') {
-                        // Сохраняем токен и имя в память браузера
                         localStorage.setItem('access_token', data.access_token);
                         localStorage.setItem('username', data.username);
                         document.getElementById('auth-btn').innerText = `Выйти (${data.username})`;
@@ -189,7 +165,7 @@
                         closeAuthModal();
                     } else {
                         showToast('Успешная регистрация! Теперь войдите.', 'success');
-                        switchAuthTab('login'); // Переключаем на вкладку входа
+                        switchAuthTab('login'); 
                     }
                 } else {
                     showToast(data.detail || 'Ошибка авторизации', 'error');
@@ -207,7 +183,6 @@
             showToast('Вы вышли из профиля', 'success');
         }
 
-
         function showPage(pageName, filterName = 'Ожерелья') {
             document.getElementById('main-page').classList.remove('active');
             document.getElementById('catalog-page').classList.remove('active');
@@ -218,7 +193,7 @@
             } else if(pageName === 'catalog') {
                 document.getElementById('catalog-page').classList.add('active');
                 document.getElementById('catalog-title').innerText = filterName;
-                loadProducts(filterName); // Передаем, что именно мы хотим загрузить
+                loadProducts(filterName); 
             } else if(pageName === 'cart') {
                 document.getElementById('cart-page').classList.add('active');
                 loadCart();
@@ -228,11 +203,11 @@
         async function loadProducts(filterName) {
             try {
                 let queryParam = '';
+                // Изменено: Учтено единственное число в базе данных
                 if (filterName === 'Ожерелья') queryParam = 'product_type=Ожерелье';
                 else if (filterName === 'Комплекты') queryParam = 'product_type=Комплект';
                 else if (filterName === 'Новинки') queryParam = 'is_new=true';
 
-                // Запрашиваем товары с фильтром
                 const response = await fetch(`http://localhost:8001/products?${queryParam}`);
                 const products = await response.json();
                 
@@ -248,19 +223,28 @@
                     const card = document.createElement('div');
                     card.className = 'product-card';
                     
-                    // Если товар новинка (is_new === true), рисуем кружок "NEW" как в Фигме
                     const newBadge = product.is_new 
                         ? `<div style="position: absolute; right: 40px; top: -15px; width: 45px; height: 45px; border-radius: 50%; border: 1px solid #fff; background: #050505; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Montserrat', sans-serif;">NEW</div>`
+                        : '';
+
+                    // Проверка наличия (stock)
+                    const inStock = product.stock > 0;
+                    const stockStatusText = inStock 
+                        ? `<span>В НАЛИЧИИ</span>` 
+                        : `<span style="color: #8b0000; font-weight: 500;">НЕТ В НАЛИЧИИ</span>`;
+                        
+                    const cartButtonHtml = inStock 
+                        ? `<button class="cart-btn" onclick="buyProduct(${product.id}, '${product.name}')">+</button>` 
                         : '';
 
                     card.innerHTML = `
                         <div class="image-wrapper">
                             <img src="${product.image}" class="image-arch" alt="${product.name}" onerror="this.style.backgroundColor='#111'">
                             ${newBadge}
-                            <button class="cart-btn" onclick="buyProduct(${product.id}, '${product.name}')">+</button>
+                            ${cartButtonHtml}
                         </div>
                         <div class="card-info-top">
-                            <span>${product.collection}</span>  <span>В НАЛИЧИИ</span>
+                            <span>${product.collection}</span>  ${stockStatusText}
                         </div>
                         <h3 class="card-title serif-text">${product.name}</h3>
                         <div class="card-price">${product.price} ₽</div>
@@ -271,14 +255,13 @@
                 document.getElementById('products-container').innerHTML = '<p style="text-align:center; grid-column: span 3; color: #8b0000;">База данных каталога недоступна.</p>';
             }
         }
-
-                async function buyProduct(id, name) {
-            // Берем токен из памяти браузера
+        
+        // НОВОЕ: Функция добавления в корзину (которой не хватало)
+        async function buyProduct(id, name) {
             const token = localStorage.getItem('access_token');
             
-            // Если токена нет, не даем даже нажать на кнопку и вызываем модалку
             if (!token) {
-                showToast('Сначала войдите в профиль!', 'error');
+                showToast('Пожалуйста, войдите в профиль, чтобы добавлять товары', 'error');
                 openAuthModal();
                 return;
             }
@@ -288,26 +271,22 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // НОВОЕ: Передаем токен серверу!
+                        'Authorization': `Bearer ${token}` 
                     },
                     body: JSON.stringify({ item_id: id, item_name: name })
                 });
-                
-                if(response.ok) {
-                    showToast(`В корзину: "${name}"`, 'success');
-                } else if (response.status === 401) {
-                    // Если токен истек или неверный
-                    showToast('Сессия истекла, войдите заново', 'error');
-                    logout();
-                    openAuthModal();
+
+                if (response.ok) {
+                    showToast('Товар успешно добавлен в корзину!', 'success');
                 } else {
-                    showToast('Ошибка при добавлении в корзину', 'error');
+                    const data = await response.json();
+                    showToast(data.detail || 'Ошибка при добавлении в корзину', 'error');
                 }
             } catch (error) {
-                showToast('Сервис заказов недоступен', 'error');
+                showToast('Сервис корзины недоступен', 'error');
             }
         }
-        
+
         async function loadCart() {
             const token = localStorage.getItem('access_token');
             const container = document.getElementById('cart-container');
@@ -336,7 +315,7 @@
                 }
 
                 container.innerHTML = '';
-                let hasPendingItems = false; // Проверяем, есть ли товары, ожидающие оформления
+                let hasPendingItems = false; 
 
                 orders.forEach(order => {
                     if (order.status === 'В корзине') hasPendingItems = true;
@@ -344,10 +323,8 @@
                     const item = document.createElement('div');
                     item.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 20px 0; align-items: center;";
                     
-                    // Если товар уже оформлен, делаем его чуть бледнее
                     const opacity = order.status === 'Оформлен' ? '0.5' : '1';
 
-                    // Показываем крестик (×) только если товар еще "В корзине"
                     const deleteBtn = order.status === 'В корзине' 
                         ? `<span onclick="removeFromCart(${order.order_id})" style="cursor:pointer; color: #8b0000; font-size: 24px; margin-left: 15px; transition: 0.3s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color='#8b0000'">×</span>` 
                         : '';
@@ -363,7 +340,6 @@
                     container.appendChild(item);
                 });
 
-                // Если есть товары в корзине, рисуем блок оформления с промокодом
                 if (hasPendingItems) {
                     const checkoutDiv = document.createElement('div');
                     checkoutDiv.style.cssText = "margin-top: 40px; text-align: right; border-top: 1px solid #333; padding-top: 30px;";
@@ -382,7 +358,6 @@
             }
         }
 
-        // НОВАЯ ФУНКЦИЯ: Оформление заказа
         async function checkout() {
             const token = localStorage.getItem('access_token');
             try {
@@ -393,7 +368,7 @@
                 
                 if (response.ok) {
                     showToast('Заказ успешно оформлен!', 'success');
-                    loadCart(); // Сразу перерисовываем корзину, чтобы обновить статусы
+                    loadCart(); 
                 } else {
                     showToast('Ошибка при оформлении заказа', 'error');
                 }
@@ -405,7 +380,6 @@
         async function removeFromCart(orderId) {
             const token = localStorage.getItem('access_token');
             try {
-                // Обрати внимание, метод DELETE
                 const response = await fetch(`http://localhost:8002/orders/${orderId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -413,7 +387,7 @@
                 
                 if (response.ok) {
                     showToast('Товар удален из корзины', 'success');
-                    loadCart(); // Мгновенно перерисовываем корзину без этого товара
+                    loadCart(); 
                 } else {
                     showToast('Не удалось удалить товар', 'error');
                 }
@@ -421,8 +395,6 @@
                 showToast('Сервис недоступен', 'error');
             }
         }
-        
     </script>
-
 </body>
 </html>

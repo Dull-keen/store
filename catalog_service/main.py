@@ -2,6 +2,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from typing import Optional
 import time
 
@@ -13,6 +14,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Модель для добавления нового товара
+class ProductCreate(BaseModel):
+    name: str
+    price: int
+    image: str
+    product_type: str
+    collection: str
+    is_new: bool
+    stock: int
 
 def get_db_connection():
     retries = 5
@@ -31,7 +42,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Создаем правильную таблицу с тремя новыми параметрами
+    # Создаем таблицу с колонкой stock (Остаток на складе)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS catalog_products (
             id SERIAL PRIMARY KEY,
@@ -40,25 +51,25 @@ def init_db():
             image VARCHAR(255),
             product_type VARCHAR(50) NOT NULL,
             collection VARCHAR(100) NOT NULL,
-            is_new BOOLEAN DEFAULT FALSE
+            is_new BOOLEAN DEFAULT FALSE,
+            stock INTEGER DEFAULT 0
         )
     ''')
     
     cursor.execute("SELECT COUNT(*) FROM catalog_products")
     if cursor.fetchone()[0] == 0:
-        # Заполняем базу товарами из твоего макета
-        # Формат: (Имя, Цена, Картинка, ТИП, КОЛЛЕКЦИЯ, НОВИНКА)
+        # Формат: (Имя, Цена, Картинка, ТИП, КОЛЛЕКЦИЯ, НОВИНКА, ОСТАТОК)
         initial_products = [
-            ("Ожерелье «THE FAIRY POOL»", 1600, "fairy.png", "Ожерелье", "МАРМЕЛАДНАЯ", False),
-            ("Ожерелье «ВСЕЛЕНСКИЙ ЭЙСИД»", 1500, "acid.png", "Ожерелье", "МАРМЕЛАДНАЯ", False),
-            ("Ожерелье «ВОДНЫЕ ПРОЦЕДУРЫ»", 1500, "water.png", "Ожерелье", "МАРМЕЛАДНАЯ", True),
-            ("Ожерелье «ДУХ РУССКОЙ ЭМО ШКОЛЫ»", 1600, "emo.png", "Ожерелье", "МАРМЕЛАДНАЯ", True),
-            ("Ожерелье «ТИМОФЕЕВА ТРАВА»", 1800, "grass.png", "Ожерелье", "РУССКАЯ СКАЗКА", True),
-            ("Комплект «ЖИВИЦА»", 2500, "set_zhivitsa.png", "Комплект", "ДУХОВНАЯ", False),
-            ("Комплект «СТЕРИЛЬНЫЙ»", 2800, "set_sterile.png", "Комплект", "ДУХОВНАЯ", True)
+            ("Ожерелье «THE FAIRY POOL»", 1600, "fairy.png", "Ожерелье", "МАРМЕЛАДНАЯ", False, 5),
+            ("Ожерелье «ВСЕЛЕНСКИЙ ЭЙСИД»", 1500, "acid.png", "Ожерелье", "МАРМЕЛАДНАЯ", False, 3),
+            ("Ожерелье «ВОДНЫЕ ПРОЦЕДУРЫ»", 1500, "water.png", "Ожерелье", "МАРМЕЛАДНАЯ", True, 2),
+            ("Ожерелье «ДУХ РУССКОЙ ЭМО ШКОЛЫ»", 1600, "emo.png", "Ожерелье", "МАРМЕЛАДНАЯ", True, 0), # <-- У этого товара 0 шт, он не будет продаваться
+            ("Ожерелье «ТИМОФЕЕВА ТРАВА»", 1800, "grass.png", "Ожерелье", "РУССКАЯ СКАЗКА", True, 1),
+            ("Комплект «ЖИВИЦА»", 2500, "set_zhivitsa.png", "Комплект", "ДУХОВНАЯ", False, 4),
+            ("Комплект «СТЕРИЛЬНЫЙ»", 2800, "set_sterile.png", "Комплект", "ДУХОВНАЯ", True, 10)
         ]
         cursor.executemany(
-            "INSERT INTO catalog_products (name, price, image, product_type, collection, is_new) VALUES (%s, %s, %s, %s, %s, %s)", 
+            "INSERT INTO catalog_products (name, price, image, product_type, collection, is_new, stock) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
             initial_products
         )
     
@@ -70,22 +81,34 @@ def init_db():
 def on_startup():
     init_db()
 
-# Умный метод, который принимает фильтры (если они есть)
+# Эндпоинт для добавления товаров в базу
+@app.post("/admin/products")
+def add_product(product: ProductCreate):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO catalog_products (name, price, image, product_type, collection, is_new, stock) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+        (product.name, product.price, product.image, product.product_type, product.collection, product.is_new, product.stock)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"message": "Товар успешно добавлен в ассортимент!"}
+
+# Метод получения каталога
 @app.get("/products")
 def get_products(product_type: Optional[str] = None, is_new: Optional[bool] = None):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor) 
     
-    # Базовый запрос
-    query = "SELECT id, name, price, image, product_type, collection, is_new FROM catalog_products WHERE 1=1"
+    # Берем данные из базы, включая остаток
+    query = "SELECT id, name, price, image, product_type, collection, is_new, stock FROM catalog_products WHERE 1=1"
     params = []
     
-    # Если фронтенд попросил конкретный тип (например, "Ожерелье")
     if product_type:
         query += " AND product_type = %s"
         params.append(product_type)
         
-    # Если фронтенд попросил новинки
     if is_new is not None:
         query += " AND is_new = %s"
         params.append(is_new)
