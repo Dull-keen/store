@@ -9,6 +9,8 @@ import time
 import jwt
 from datetime import datetime, timedelta
 import requests
+import uuid
+from typing import Optional
 
 app = FastAPI(title="Сервис Заказов и Пользователей")
 
@@ -30,6 +32,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 class OrderRequest(BaseModel):
     item_id: int
     item_name: str
+
+class CheckoutRequest(BaseModel):
+    note: Optional[str] = ""
 
 class UserRegister(BaseModel):
     username: str
@@ -64,7 +69,6 @@ def init_db():
         )
     ''')
     
-    # НОВОЕ: В таблицу заказов добавлено поле user_id!
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             order_id SERIAL PRIMARY KEY,
@@ -74,6 +78,10 @@ def init_db():
             status VARCHAR(50) NOT NULL
         )
     ''')
+    
+    # НОВОЕ: Добавляем колонки для группировки заказа и примечания
+    cursor.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS group_id VARCHAR(50)")
+    cursor.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS note TEXT")
     
     conn.commit()
     cursor.close()
@@ -179,24 +187,27 @@ def create_order(order: OrderRequest, current_user: dict = Depends(get_current_u
 def get_orders(current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    # Выдаем только те заказы, которые принадлежат этому пользователю
-    cursor.execute("SELECT order_id, item_id, item_name, status FROM orders WHERE user_id = %s", (current_user["id"],))
+    # НОВОЕ: добавили group_id и note в выборку
+    cursor.execute("SELECT order_id, item_id, item_name, status, group_id, note FROM orders WHERE user_id = %s", (current_user["id"],))
     orders = cursor.fetchall()
     cursor.close()
     conn.close()
     return orders
 
 @app.post("/checkout")
-def checkout_orders(current_user: dict = Depends(get_current_user)):
+def checkout_orders(req: CheckoutRequest, current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Меняем статус с "В корзине" на "Оформлен"
+    # Генерируем красивый короткий номер заказа, например ORD-A1B2C3
+    new_group_id = f"ORD-{str(uuid.uuid4())[:6].upper()}"
+    
+    # Меняем статус и присваиваем номер заказа и примечание
     cursor.execute(
-        "UPDATE orders SET status = 'Оформлен' WHERE user_id = %s AND status = 'В корзине'",
-        (current_user["id"],)
+        "UPDATE orders SET status = 'Оформлен', group_id = %s, note = %s WHERE user_id = %s AND status = 'В корзине'",
+        (new_group_id, req.note, current_user["id"])
     )
-    updated_count = cursor.rowcount # Смотрим, сколько товаров обновилось
+    updated_count = cursor.rowcount 
     
     conn.commit()
     cursor.close()
@@ -205,7 +216,7 @@ def checkout_orders(current_user: dict = Depends(get_current_user)):
     if updated_count == 0:
         raise HTTPException(status_code=400, detail="Корзина пуста")
         
-    return {"message": "Заказ успешно оформлен!"}
+    return {"message": "Заказ успешно оформлен!", "order_group": new_group_id}
 
 @app.delete("/orders/{order_id}")
 def delete_order(order_id: int, current_user: dict = Depends(get_current_user)):

@@ -6,7 +6,17 @@
     <title>Store</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #050505; color: #ffffff; font-family: 'Montserrat', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        body { 
+            background-color: #050505; 
+            color: #ffffff; 
+            font-family: 'Montserrat', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            overflow-x: hidden; 
+            display: flex;          /* Включаем режим Flexbox */
+            flex-direction: column; /* Элементы выстраиваются сверху вниз */
+            min-height: 100vh;      /* Высота body минимум 100% высоты окна браузера */
+        }
         h1, h2, h3, .serif-text { font-family: 'Playfair Display', serif; font-weight: 400; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; border-bottom: 1px solid #333; margin-bottom: 40px; position: relative; }
         .header-menu { display: flex; gap: 30px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
@@ -14,8 +24,19 @@
         .header-menu a:hover { color: #888; }
         .logo { position: absolute; left: 50%; transform: translateX(-50%); }
         .logo img { height: 90px; }
-        .page-section { display: none; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .page-section.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
+        .page-section { 
+            display: none; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 0 20px; 
+            width: 100%;             /* Чтобы контент не сжимался */
+            box-sizing: border-box;  /* Учитываем отступы в ширине */
+        }
+        .page-section.active { 
+            display: block; 
+            flex: 1;                 /* Заставляет секцию расти и занимать всё свободное место! */
+            animation: fadeIn 0.4s ease-out forwards; 
+        }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .main-page-content { text-align: center; max-width: 800px; margin: 0 auto; }
         .main-huge-arch { width: 100%; max-width: 500px; height: 600px; object-fit: cover; border-radius: 300px 300px 0 0; border: 1px solid #444; margin-bottom: 40px; }
@@ -48,6 +69,57 @@
         .form-input:focus { border-color: #aaa; }
         .submit-btn { width: 100%; padding: 14px; background: #fff; color: #000; border: none; border-radius: 30px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 500; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: 0.3s; }
         .submit-btn:hover { background: #ddd; }
+        /* --- СТИЛИ ДЛЯ ФУТЕРА --- */
+        footer {
+            background-color: #080808;
+            border-top: 1px solid #222;
+            padding: 60px 20px 20px;
+            margin-top: 80px; /* Отступ сверху, чтобы отклеить контент от низа */
+            color: #888;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            max-width: 1000px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+            gap: 40px;
+        }
+        .footer-section h3 {
+            color: #fff;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .footer-section p {
+            font-size: 13px;
+            line-height: 1.8;
+            margin: 0;
+        }
+        .footer-section a {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: color 0.3s;
+            text-decoration: none;
+            color: #888;
+        }
+        .footer-section a:hover {
+            color: #fff;
+        }
+        .footer-bottom {
+            text-align: center;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 25px;
+            margin-top: 50px;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -106,6 +178,33 @@
             </form>
         </div>
     </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section" style="max-width: 300px;">
+                <h3 class="serif-text">Store</h3>
+                <p>Мы создаем уникальные украшения с душой. Каждое изделие изготавливается вручную с особой любовью и вниманием к деталям.</p>
+            </div>
+            
+            <div class="footer-section">
+                <h3 class="serif-text">Клиентам</h3>
+                <a onclick="showToast('Раздел в разработке', 'success')">Оплата и доставка</a>
+                <a onclick="showToast('Раздел в разработке', 'success')">Возврат и обмен</a>
+                <a onclick="showToast('Раздел в разработке', 'success')">Уход за украшениями</a>
+            </div>
+            
+            <div class="footer-section">
+                <h3 class="serif-text">Контакты</h3>
+                <a>Telegram: @store_support</a>
+                <a>Email: hello@store.ru</a>
+                <a>Москва, РГУ им. А.Н. Косыгина</a>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            &copy; 2026 Store. Все права защищены. Курсовой проект.
+        </div>
+    </footer>
 
     <script>
         function showToast(message, type = 'success') {
@@ -391,9 +490,9 @@
                 const checkoutDiv = document.createElement('div');
                 checkoutDiv.style.cssText = "margin-top: 40px; text-align: right; border-top: 1px solid #333; padding-top: 30px;";
                 checkoutDiv.innerHTML = `
-                    <div style="margin-bottom: 25px; display: flex; justify-content: flex-end; gap: 15px;">
-                        <input type="text" placeholder="Промокод" class="form-input" style="width: 200px; margin: 0; padding: 10px;">
-                        <button onclick="showToast('Промокод применен!', 'success')" class="submit-btn" style="width: 150px; background: transparent; color: #fff; border: 1px solid #fff; padding: 10px;">Применить</button>
+                    <div style="margin-bottom: 25px; text-align: left;">
+                        <p style="font-size: 12px; color: #888; margin-bottom: 10px; text-transform: uppercase;">Примечание к заказу:</p>
+                        <textarea id="order-note" placeholder="Например: Положите в подарочную упаковку..." class="form-input" style="width: 100%; height: 80px; resize: none;"></textarea>
                     </div>
                     <button onclick="checkout()" class="submit-btn" style="width: 250px; font-size: 14px; padding: 15px;">Оформить заказ</button>
                 `;
@@ -414,7 +513,6 @@
             }
 
             try {
-                // Подгружаем изображения
                 let productMap = {};
                 try {
                     const productsResponse = await fetch('http://localhost:8001/products');
@@ -433,8 +531,6 @@
                 }
 
                 const orders = await response.json();
-                
-                // Фильтруем только те, у которых статус "Оформлен"
                 const orderedItems = orders.filter(order => order.status === 'Оформлен');
 
                 if (orderedItems.length === 0) {
@@ -444,46 +540,70 @@
 
                 container.innerHTML = '';
 
-                // Группируем для аккуратного вывода купленного количества
-                const grouped = {};
+                // 1. Сначала разбиваем все товары по заказам (group_id)
+                const ordersByGroup = {};
                 orderedItems.forEach(order => {
-                    if (!grouped[order.item_id]) {
-                        grouped[order.item_id] = {
-                            item_id: order.item_id,
-                            item_name: order.item_name,
+                    const gId = order.group_id || 'Старый заказ (без номера)';
+                    
+                    if (!ordersByGroup[gId]) {
+                        ordersByGroup[gId] = {
+                            note: order.note || '',
+                            items: {} // Внутри заказа будем хранить сгруппированные товары
+                        };
+                    }
+                    
+                    // 2. Склеиваем одинаковые позиции внутри одного заказа
+                    if (!ordersByGroup[gId].items[order.item_id]) {
+                        ordersByGroup[gId].items[order.item_id] = {
+                            name: order.item_name,
                             count: 0
                         };
                     }
-                    grouped[order.item_id].count += 1;
+                    ordersByGroup[gId].items[order.item_id].count += 1;
                 });
 
-                // Отрендерим оформленные заказы
-                Object.values(grouped).forEach(group => {
-                    const item = document.createElement('div');
-                    item.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 20px 0; align-items: center; opacity: 0.85;";
+                // 3. Выводим каждый заказ в виде красивого блока
+                Object.entries(ordersByGroup).forEach(([groupId, groupData]) => {
+                    const orderBlock = document.createElement('div');
+                    orderBlock.style.cssText = "background: #0d0d0d; border: 1px solid #333; padding: 25px; border-radius: 12px; margin-bottom: 30px;";
                     
-                    const imageUrl = productMap[group.item_id] || '';
-                    const imgHtml = imageUrl 
-                        ? `<img src="${imageUrl}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 20px; border: 1px solid #444; filter: grayscale(30%);" onerror="this.style.backgroundColor='#111'">`
-                        : '';
-
-                    item.innerHTML = `
-                        <div style="display: flex; align-items: center;">
-                            ${imgHtml}
+                    // Шапка заказа (номер + примечание)
+                    let headerHtml = `
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 15px;">
                             <div>
-                                <div style="font-family: 'Playfair Display', serif; font-size: 18px; text-transform: uppercase; color: #ccc;">
-                                    ${group.item_name}
-                                </div>
-                                <div style="color: #888; font-size: 13px; margin-top: 5px; font-family: 'Montserrat', sans-serif;">
-                                    Было куплено: ${group.count} шт.
+                                <h3 style="margin: 0; font-family: 'Playfair Display', serif; color: #fff; font-size: 22px;">Заказ #${groupId}</h3>
+                                ${groupData.note ? `<p style="color: #a89f91; font-size: 13px; margin: 8px 0 0 0; font-style: italic;">Примечание: "${groupData.note}"</p>` : ''}
+                            </div>
+                            <span style="color: #a89f91; font-size: 11px; letter-spacing: 1px; font-weight: 500;">УСПЕШНО ОФОРМЛЕН</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                    `;
+
+                    // Список товаров внутри этого заказа
+                    let itemsHtml = '';
+                    Object.entries(groupData.items).forEach(([itemId, itemData]) => {
+                        const imageUrl = productMap[itemId] || '';
+                        const imgHtml = imageUrl 
+                            ? `<img src="${imageUrl}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin-right: 15px; border: 1px solid #333; filter: grayscale(20%);" onerror="this.style.backgroundColor='#111'">`
+                            : '';
+
+                        itemsHtml += `
+                            <div style="display: flex; align-items: center; opacity: 0.9;">
+                                ${imgHtml}
+                                <div>
+                                    <div style="font-family: 'Montserrat', sans-serif; font-size: 14px; text-transform: uppercase; color: #ddd;">
+                                        ${itemData.name}
+                                    </div>
+                                    <div style="color: #666; font-size: 12px; margin-top: 4px;">
+                                        Количество: <span style="color: #fff;">${itemData.count} шт.</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div style="color: #a89f91; font-size: 12px; letter-spacing: 1px; font-weight: 500;">
-                            СТАТУС: ОФОРМЛЕН
-                        </div>
-                    `;
-                    container.appendChild(item);
+                        `;
+                    });
+
+                    orderBlock.innerHTML = headerHtml + itemsHtml + `</div>`;
+                    container.appendChild(orderBlock);
                 });
 
             } catch (error) {
@@ -493,20 +613,27 @@
 
         async function checkout() {
             const token = localStorage.getItem('access_token');
+            const noteElement = document.getElementById('order-note');
+            const noteText = noteElement ? noteElement.value : "";
+
             try {
                 const response = await fetch('http://localhost:8002/checkout', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ note: noteText }) // Отправляем примечание
                 });
-                
+                                
                 if (response.ok) {
                     showToast('Заказ успешно оформлен!', 'success');
                     loadCart(); 
                 } else {
-                    showToast('Ошибка при оформлении заказа', 'error');
+                    showToast('Корзина пуста или произошла ошибка', 'error');
                 }
             } catch (error) {
-                showToast('Сервис заказов недоступен', 'error');
+                showToast('Ошибка при оформлении', 'error');
             }
         }
 
