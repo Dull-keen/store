@@ -153,35 +153,6 @@ def login_user(user: UserLogin):
     token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
     return {"access_token": token, "token_type": "bearer", "username": db_user["username"]}
 
-# --- ЗАКАЗЫ (ТЕПЕРЬ ЗАЩИЩЕНЫ) ---
-# Обрати внимание на Depends(get_current_user) - без токена метод даже не запустится!
-@app.post("/orders")
-def create_order(order: OrderRequest, current_user: dict = Depends(get_current_user)):
-    # 1. Сначала просим сервис каталога зарезервировать товар
-    try:
-        response = requests.post(
-            f"{CATALOG_SERVICE_URL}/reserve", 
-            json={"item_id": order.item_id, "quantity": 1},
-            timeout=5
-        )
-        # Если каталог ответил ошибкой (например, 400), значит товара нет
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Этого товара больше нет в наличии")
-    except requests.exceptions.RequestException:
-        raise HTTPException(status_code=503, detail="Сервис каталога временно недоступен")
-
-    # 2. Если товар успешно зарезервирован, добавляем его в корзину пользователя
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO orders (user_id, item_id, item_name, status) VALUES (%s, %s, %s, %s) RETURNING order_id",
-        (current_user["id"], order.item_id, order.item_name, "В корзине")
-    )
-    new_order_id = cursor.fetchone()[0]
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return {"message": "Успешно!", "order_id": new_order_id}
 
 @app.get("/orders")
 def get_orders(current_user: dict = Depends(get_current_user)):
@@ -194,59 +165,47 @@ def get_orders(current_user: dict = Depends(get_current_user)):
     conn.close()
     return orders
 
-@app.post("/checkout")
-def checkout_orders(req: CheckoutRequest, current_user: dict = Depends(get_current_user)):
+@app.post("/orders")
+def create_order(order: OrderRequest, current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Генерируем красивый короткий номер заказа, например ORD-A1B2C3
-    new_group_id = f"ORD-{str(uuid.uuid4())[:6].upper()}"
-    
-    # Меняем статус и присваиваем номер заказа и примечание
+    # 1. Считаем, сколько такого товара УЖЕ лежит у пользователя в корзине
     cursor.execute(
-        "UPDATE orders SET status = 'Оформлен', group_id = %s, note = %s WHERE user_id = %s AND status = 'В корзине'",
-        (new_group_id, req.note, current_user["id"])
+        "SELECT COUNT(*) FROM orders WHERE user_id = %s AND item_id = %s AND status = 'В корзине'",
+        (current_user["id"], order.item_id)
     )
-    updated_count = cursor.rowcount 
+    in_cart = cursor.fetchone()[0]
     
+    # 2. Спрашиваем каталог, сколько товара реально есть на складе
+    try:
+        resp = requests.get(f"{CATALOG_SERVICE_URL}/products/{order.item_id}", timeout=5)
+        if resp.status_code == 200:
+            stock = resp.json()["stock"]
+            if in_cart >= stock:
+                cursor.close()
+                conn.close()
+                raise HTTPException(status_code=400, detail=f"На складе доступно только {stock} шт.")
+    except requests.exceptions.RequestException:
+        pass 
+        
+    # 3. Добавляем в корзину (каталог пока не трогаем!)
+    cursor.execute(
+        "INSERT INTO orders (user_id, item_id, item_name, status) VALUES (%s, %s, %s, %s) RETURNING order_id",
+        (current_user["id"], order.item_id, order.item_name, "В корзине")
+    )
+    new_order_id = cursor.fetchone()[0]
     conn.commit()
     cursor.close()
     conn.close()
-    
-    if updated_count == 0:
-        raise HTTPException(status_code=400, detail="Корзина пуста")
-        
-    return {"message": "Заказ успешно оформлен!", "order_group": new_group_id}
+    return {"message": "Добавлено в корзину", "order_id": new_order_id}
 
 @app.delete("/orders/{order_id}")
 def delete_order(order_id: int, current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-    # 1. Узнаем item_id удаляемого товара из нашей БД
-    cursor.execute(
-        "SELECT item_id FROM orders WHERE order_id = %s AND user_id = %s AND status = 'В корзине'",
-        (order_id, current_user["id"])
-    )
-    order = cursor.fetchone()
-
-    if not order:
-        cursor.close()
-        conn.close()
-        raise HTTPException(status_code=400, detail="Товар не найден или уже оформлен")
-
-    # 2. Просим каталог вернуть товар на виртуальный склад
-    try:
-        requests.post(
-            f"{CATALOG_SERVICE_URL}/release", 
-            json={"item_id": order["item_id"], "quantity": 1},
-            timeout=5
-        )
-    except requests.exceptions.RequestException:
-        # Для курсовой просто игнорируем, в реальности тут нужна система повторных попыток (retry)
-        pass 
-
-    # 3. Удаляем товар из корзины
+    cursor = conn.cursor()
+    
+    # Просто удаляем из своей БД (возвращать на склад больше ничего не нужно)
     cursor.execute(
         "DELETE FROM orders WHERE order_id = %s AND user_id = %s AND status = 'В корзине'",
         (order_id, current_user["id"])
@@ -254,5 +213,52 @@ def delete_order(order_id: int, current_user: dict = Depends(get_current_user)):
     conn.commit()
     cursor.close()
     conn.close()
+    return {"message": "Товар удален из корзины"}
 
-    return {"message": "Товар успешно удален из корзины"}
+@app.post("/checkout")
+def checkout_orders(req: CheckoutRequest, current_user: dict = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # 1. Собираем всю корзину в список [ {item_id, quantity}, ... ]
+    cursor.execute(
+        "SELECT item_id, COUNT(*) as quantity FROM orders WHERE user_id = %s AND status = 'В корзине' GROUP BY item_id",
+        (current_user["id"],)
+    )
+    cart_items = cursor.fetchall()
+    
+    if not cart_items:
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail="Корзина пуста")
+        
+    items_to_checkout = [{"item_id": row["item_id"], "quantity": row["quantity"]} for row in cart_items]
+    
+    # 2. Отправляем корзину в каталог для массового списания
+    try:
+        response = requests.post(
+            f"{CATALOG_SERVICE_URL}/verify_and_checkout", 
+            json={"items": items_to_checkout},
+            timeout=5
+        )
+        if response.status_code != 200:
+            cursor.close()
+            conn.close()
+            error_msg = response.json().get("detail", "Недостаточно товара на складе")
+            raise HTTPException(status_code=400, detail=error_msg)
+    except requests.exceptions.RequestException:
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=503, detail="Сервис каталога недоступен")
+        
+    # 3. Если каталог всё успешно списал, оформляем заказ у нас
+    new_group_id = f"ORD-{str(uuid.uuid4())[:6].upper()}"
+    cursor.execute(
+        "UPDATE orders SET status = 'Оформлен', group_id = %s, note = %s WHERE user_id = %s AND status = 'В корзине'",
+        (new_group_id, req.note, current_user["id"])
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    return {"message": "Заказ успешно оформлен!", "order_group": new_group_id}

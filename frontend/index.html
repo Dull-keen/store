@@ -355,7 +355,7 @@
                     // Проверка наличия (stock)
                     const inStock = product.stock > 0;
                     const stockStatusText = inStock 
-                        ? `<span>В НАЛИЧИИ</span>` 
+                        ? `<span style="color: #a89f91;">В НАЛИЧИИ: ${product.stock} ШТ.</span>` 
                         : `<span style="color: #8b0000; font-weight: 500;">НЕТ В НАЛИЧИИ</span>`;
                         
                     const cartButtonHtml = inStock 

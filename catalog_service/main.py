@@ -132,43 +132,53 @@ def get_products(product_type: Optional[str] = None, is_new: Optional[bool] = No
     conn.close()
     return products
 
-class ReserveRequest(BaseModel):
+# --- НОВЫЕ МОДЕЛИ ---
+class CheckoutItem(BaseModel):
     item_id: int
-    quantity: int = 1
+    quantity: int
 
-@app.post("/reserve")
-def reserve_product(req: ReserveRequest):
+class MassCheckoutRequest(BaseModel):
+    items: list[CheckoutItem]
+
+# --- НОВЫЕ ЭНДПОИНТЫ ---
+@app.get("/products/{item_id}")
+def get_product(item_id: int):
     conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Атомарное списание: отнимаем товар, только если его хватает (stock >= quantity)
-    cursor.execute(
-        "UPDATE catalog_products SET stock = stock - %s WHERE id = %s AND stock >= %s", 
-        (req.quantity, req.item_id, req.quantity)
-    )
-    updated = cursor.rowcount
-    conn.commit()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT * FROM catalog_products WHERE id = %s", (item_id,))
+    product = cursor.fetchone()
     cursor.close()
     conn.close()
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return product
 
-    # Если ни одна строка не обновилась, значит товара нет в наличии
-    if updated == 0:
-        raise HTTPException(status_code=400, detail="Товар закончился на складе")
-
-    return {"message": "Товар зарезервирован"}
-
-@app.post("/release")
-def release_product(req: ReserveRequest):
+@app.post("/verify_and_checkout")
+def verify_and_checkout(req: MassCheckoutRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
-
-    # Возвращаем товар на склад (при удалении из корзины)
-    cursor.execute(
-        "UPDATE catalog_products SET stock = stock + %s WHERE id = %s", 
-        (req.quantity, req.item_id)
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return {"message": "Товар возвращен на склад"}
+    
+    try:
+        # Начинаем транзакцию. Если хоть один товар закончился, мы отменим всё!
+        cursor.execute("BEGIN")
+        
+        for item in req.items:
+            cursor.execute(
+                "UPDATE catalog_products SET stock = stock - %s WHERE id = %s AND stock >= %s RETURNING stock",
+                (item.quantity, item.item_id, item.quantity)
+            )
+            if cursor.fetchone() is None:
+                # Если списание не удалось, значит кто-то успел купить этот товар
+                cursor.execute("ROLLBACK")
+                raise HTTPException(status_code=400, detail="Извините, часть товаров из вашей корзины уже раскупили.")
+        
+        cursor.execute("COMMIT")
+        return {"message": "Успешно списано со склада"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        cursor.execute("ROLLBACK")
+        raise HTTPException(status_code=500, detail="Ошибка базы данных")
+    finally:
+        cursor.close()
+        conn.close()
