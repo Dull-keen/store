@@ -26,7 +26,6 @@ SECRET_KEY = "sokolova_store_super_secret"
 ALGORITHM = "HS256"
 CATALOG_SERVICE_URL = "http://catalog-service:8001"
 
-# НОВОЕ: Указываем FastAPI, где выдаются токены (для красивой работы Swagger)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 class OrderRequest(BaseModel):
@@ -79,7 +78,6 @@ def init_db():
         )
     ''')
     
-    # НОВОЕ: Добавляем колонки для группировки заказа и примечания
     cursor.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS group_id VARCHAR(50)")
     cursor.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS note TEXT")
     
@@ -91,10 +89,8 @@ def init_db():
 def on_startup():
     init_db()
 
-# --- ФЕЙСКОНТРОЛЬ (Проверка токена) ---
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
-        # Пытаемся расшифровать токен
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
@@ -102,7 +98,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Недействительный токен")
     
-    # Ищем пользователя в базе
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
@@ -112,9 +107,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     
     if user is None:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
-    return user # Возвращаем все данные пользователя (включая его ID)
+    return user
 
-# --- АВТОРИЗАЦИЯ ---
 @app.post("/register")
 def register_user(user: UserRegister):
     conn = get_db_connection()
@@ -158,7 +152,6 @@ def login_user(user: UserLogin):
 def get_orders(current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    # НОВОЕ: добавили group_id и note в выборку
     cursor.execute("SELECT order_id, item_id, item_name, status, group_id, note FROM orders WHERE user_id = %s", (current_user["id"],))
     orders = cursor.fetchall()
     cursor.close()
@@ -170,14 +163,12 @@ def create_order(order: OrderRequest, current_user: dict = Depends(get_current_u
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # 1. Считаем, сколько такого товара УЖЕ лежит у пользователя в корзине
     cursor.execute(
         "SELECT COUNT(*) FROM orders WHERE user_id = %s AND item_id = %s AND status = 'В корзине'",
         (current_user["id"], order.item_id)
     )
     in_cart = cursor.fetchone()[0]
     
-    # 2. Спрашиваем каталог, сколько товара реально есть на складе
     try:
         resp = requests.get(f"{CATALOG_SERVICE_URL}/products/{order.item_id}", timeout=5)
         if resp.status_code == 200:
@@ -189,7 +180,6 @@ def create_order(order: OrderRequest, current_user: dict = Depends(get_current_u
     except requests.exceptions.RequestException:
         pass 
         
-    # 3. Добавляем в корзину (каталог пока не трогаем!)
     cursor.execute(
         "INSERT INTO orders (user_id, item_id, item_name, status) VALUES (%s, %s, %s, %s) RETURNING order_id",
         (current_user["id"], order.item_id, order.item_name, "В корзине")
@@ -205,7 +195,6 @@ def delete_order(order_id: int, current_user: dict = Depends(get_current_user)):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Просто удаляем из своей БД (возвращать на склад больше ничего не нужно)
     cursor.execute(
         "DELETE FROM orders WHERE order_id = %s AND user_id = %s AND status = 'В корзине'",
         (order_id, current_user["id"])
@@ -220,7 +209,6 @@ def checkout_orders(req: CheckoutRequest, current_user: dict = Depends(get_curre
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
-    # 1. Собираем всю корзину в список [ {item_id, quantity}, ... ]
     cursor.execute(
         "SELECT item_id, COUNT(*) as quantity FROM orders WHERE user_id = %s AND status = 'В корзине' GROUP BY item_id",
         (current_user["id"],)
@@ -234,7 +222,6 @@ def checkout_orders(req: CheckoutRequest, current_user: dict = Depends(get_curre
         
     items_to_checkout = [{"item_id": row["item_id"], "quantity": row["quantity"]} for row in cart_items]
     
-    # 2. Отправляем корзину в каталог для массового списания
     try:
         response = requests.post(
             f"{CATALOG_SERVICE_URL}/verify_and_checkout", 
@@ -251,7 +238,6 @@ def checkout_orders(req: CheckoutRequest, current_user: dict = Depends(get_curre
         conn.close()
         raise HTTPException(status_code=503, detail="Сервис каталога недоступен")
         
-    # 3. Если каталог всё успешно списал, оформляем заказ у нас
     new_group_id = f"ORD-{str(uuid.uuid4())[:6].upper()}"
     cursor.execute(
         "UPDATE orders SET status = 'Оформлен', group_id = %s, note = %s WHERE user_id = %s AND status = 'В корзине'",

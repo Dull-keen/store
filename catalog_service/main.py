@@ -15,7 +15,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Модель для добавления нового товара
 class ProductCreate(BaseModel):
     name: str
     price: int
@@ -42,7 +41,6 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Создаем таблицу с колонкой stock (Остаток на складе)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS catalog_products (
             id SERIAL PRIMARY KEY,
@@ -107,13 +105,11 @@ def add_product(product: ProductCreate):
     conn.close()
     return {"message": "Товар успешно добавлен в ассортимент!"}
 
-# Метод получения каталога
 @app.get("/products")
 def get_products(product_type: Optional[str] = None, is_new: Optional[bool] = None):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor) 
     
-    # Берем данные из базы, включая остаток
     query = "SELECT id, name, price, image, product_type, collection, is_new, stock FROM catalog_products WHERE 1=1"
     params = []
     
@@ -132,7 +128,6 @@ def get_products(product_type: Optional[str] = None, is_new: Optional[bool] = No
     conn.close()
     return products
 
-# --- НОВЫЕ МОДЕЛИ ---
 class CheckoutItem(BaseModel):
     item_id: int
     quantity: int
@@ -140,7 +135,6 @@ class CheckoutItem(BaseModel):
 class MassCheckoutRequest(BaseModel):
     items: list[CheckoutItem]
 
-# --- НОВЫЕ ЭНДПОИНТЫ ---
 @app.get("/products/{item_id}")
 def get_product(item_id: int):
     conn = get_db_connection()
@@ -159,7 +153,6 @@ def verify_and_checkout(req: MassCheckoutRequest):
     cursor = conn.cursor()
     
     try:
-        # Начинаем транзакцию. Если хоть один товар закончился, мы отменим всё!
         cursor.execute("BEGIN")
         
         for item in req.items:
@@ -168,7 +161,6 @@ def verify_and_checkout(req: MassCheckoutRequest):
                 (item.quantity, item.item_id, item.quantity)
             )
             if cursor.fetchone() is None:
-                # Если списание не удалось, значит кто-то успел купить этот товар
                 cursor.execute("ROLLBACK")
                 raise HTTPException(status_code=400, detail="Извините, часть товаров из вашей корзины уже раскупили.")
         

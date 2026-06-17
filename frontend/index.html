@@ -13,9 +13,9 @@
             margin: 0; 
             padding: 0; 
             overflow-x: hidden; 
-            display: flex;          /* Включаем режим Flexbox */
-            flex-direction: column; /* Элементы выстраиваются сверху вниз */
-            min-height: 100vh;      /* Высота body минимум 100% высоты окна браузера */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
         h1, h2, h3, .serif-text { font-family: 'Playfair Display', serif; font-weight: 400; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; border-bottom: 1px solid #333; margin-bottom: 40px; position: relative; }
@@ -29,12 +29,12 @@
             max-width: 1200px; 
             margin: 0 auto; 
             padding: 0 20px; 
-            width: 100%;             /* Чтобы контент не сжимался */
-            box-sizing: border-box;  /* Учитываем отступы в ширине */
+            width: 100%;
+            box-sizing: border-box;
         }
         .page-section.active { 
             display: block; 
-            flex: 1;                 /* Заставляет секцию расти и занимать всё свободное место! */
+            flex: 1;
             animation: fadeIn 0.4s ease-out forwards; 
         }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -69,12 +69,11 @@
         .form-input:focus { border-color: #aaa; }
         .submit-btn { width: 100%; padding: 14px; background: #fff; color: #000; border: none; border-radius: 30px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 500; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: 0.3s; }
         .submit-btn:hover { background: #ddd; }
-        /* --- СТИЛИ ДЛЯ ФУТЕРА --- */
         footer {
             background-color: #080808;
             border-top: 1px solid #222;
             padding: 60px 20px 20px;
-            margin-top: 80px; /* Отступ сверху, чтобы отклеить контент от низа */
+            margin-top: 80px;
             color: #888;
             font-family: 'Montserrat', sans-serif;
         }
@@ -222,7 +221,6 @@
             }, 3000);
         }
 
-        // НОВАЯ ФУНКЦИЯ: проверяет, какая страница сейчас открыта, и перезагружает её данные
         function refreshCurrentView() {
             if (document.getElementById('cart-page').classList.contains('active')) {
                 loadCart();
@@ -308,7 +306,7 @@
             document.getElementById('main-page').classList.remove('active');
             document.getElementById('catalog-page').classList.remove('active');
             document.getElementById('cart-page').classList.remove('active');
-            document.getElementById('orders-page').classList.remove('active'); // Скрываем историю
+            document.getElementById('orders-page').classList.remove('active');
             
             if(pageName === 'main') {
                 document.getElementById('main-page').classList.add('active');
@@ -320,15 +318,14 @@
                 document.getElementById('cart-page').classList.add('active');
                 loadCart();
             } else if(pageName === 'orders') {
-                document.getElementById('orders-page').classList.add('active'); // Показываем историю
-                loadOrders(); // Вызываем новую функцию загрузки заказов
+                document.getElementById('orders-page').classList.add('active');
+                loadOrders();
             }
         }
 
         async function loadProducts(filterName) {
             try {
                 let queryParam = '';
-                // Изменено: Учтено единственное число в базе данных
                 if (filterName === 'Ожерелья') queryParam = 'product_type=Ожерелье';
                 else if (filterName === 'Комплекты') queryParam = 'product_type=Комплект';
                 else if (filterName === 'Новинки') queryParam = 'is_new=true';
@@ -352,7 +349,6 @@
                         ? `<div style="position: absolute; right: 40px; top: -15px; width: 45px; height: 45px; border-radius: 50%; border: 1px solid #fff; background: #050505; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'Montserrat', sans-serif;">NEW</div>`
                         : '';
 
-                    // Проверка наличия (stock)
                     const inStock = product.stock > 0;
                     const stockStatusText = inStock 
                         ? `<span style="color: #a89f91;">В НАЛИЧИИ: ${product.stock} ШТ.</span>` 
@@ -381,7 +377,6 @@
             }
         }
         
-        // НОВОЕ: Функция добавления в корзину (которой не хватало)
         async function buyProduct(id, name) {
             const token = localStorage.getItem('access_token');
             
@@ -422,7 +417,6 @@
             }
 
             try {
-                // 1. Получаем карту картинок из сервиса каталога
                 let productMap = {};
                 try {
                     const productsResponse = await fetch('http://localhost:8001/products');
@@ -432,7 +426,6 @@
                     console.error("Не удалось загрузить изображения товаров", e);
                 }
 
-                // 2. Получаем все позиции из сервиса заказов
                 const response = await fetch('http://localhost:8002/orders', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -445,7 +438,6 @@
 
                 const orders = await response.json();
                 
-                // Фильтруем ТОЛЬКО те, что реально лежат в корзине (не оформлены)
                 const cartItems = orders.filter(order => order.status === 'В корзине');
 
                 if (cartItems.length === 0) {
@@ -455,14 +447,13 @@
 
                 container.innerHTML = '';
 
-                // 3. Склеиваем одинаковые позиции
                 const grouped = {};
                 cartItems.forEach(order => {
                     if (!grouped[order.item_id]) {
                         grouped[order.item_id] = {
                             item_id: order.item_id,
                             item_name: order.item_name,
-                            order_ids: [], // Сохраняем ID всех этих ордеров в базе для удаления по одному
+                            order_ids: [],
                             count: 0
                         };
                     }
@@ -470,7 +461,6 @@
                     grouped[order.item_id].count += 1;
                 });
 
-                // 4. Отрендерим сгруппированные товары с превью
                 Object.values(grouped).forEach(group => {
                     const item = document.createElement('div');
                     item.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 20px 0; align-items: center;";
@@ -480,7 +470,6 @@
                         ? `<img src="${imageUrl}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 20px; border: 1px solid #444;" onerror="this.style.backgroundColor='#111'">`
                         : '';
 
-                    // При нажатии на крестик удаляем первый попавшийся order_id из этой группы
                     const firstOrderId = group.order_ids[0];
                     const deleteBtn = `<span onclick="removeFromCart(${firstOrderId})" style="cursor:pointer; color: #8b0000; font-size: 24px; margin-left: 15px; transition: 0.3s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color='#8b0000'">×</span>`;
 
@@ -503,7 +492,6 @@
                     container.appendChild(item);
                 });
 
-                // Добавляем кнопку оформления, если в корзине что-то есть
                 const checkoutDiv = document.createElement('div');
                 checkoutDiv.style.cssText = "margin-top: 40px; text-align: right; border-top: 1px solid #333; padding-top: 30px;";
                 checkoutDiv.innerHTML = `
@@ -557,7 +545,6 @@
 
                 container.innerHTML = '';
 
-                // 1. Сначала разбиваем все товары по заказам (group_id)
                 const ordersByGroup = {};
                 orderedItems.forEach(order => {
                     const gId = order.group_id || 'Старый заказ (без номера)';
@@ -565,11 +552,10 @@
                     if (!ordersByGroup[gId]) {
                         ordersByGroup[gId] = {
                             note: order.note || '',
-                            items: {} // Внутри заказа будем хранить сгруппированные товары
+                            items: {}
                         };
                     }
                     
-                    // 2. Склеиваем одинаковые позиции внутри одного заказа
                     if (!ordersByGroup[gId].items[order.item_id]) {
                         ordersByGroup[gId].items[order.item_id] = {
                             name: order.item_name,
@@ -579,12 +565,10 @@
                     ordersByGroup[gId].items[order.item_id].count += 1;
                 });
 
-                // 3. Выводим каждый заказ в виде красивого блока
                 Object.entries(ordersByGroup).forEach(([groupId, groupData]) => {
                     const orderBlock = document.createElement('div');
                     orderBlock.style.cssText = "background: #0d0d0d; border: 1px solid #333; padding: 25px; border-radius: 12px; margin-bottom: 30px;";
                     
-                    // Шапка заказа (номер + примечание)
                     let headerHtml = `
                         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 15px;">
                             <div>
@@ -596,7 +580,6 @@
                         <div style="display: flex; flex-direction: column; gap: 15px;">
                     `;
 
-                    // Список товаров внутри этого заказа
                     let itemsHtml = '';
                     Object.entries(groupData.items).forEach(([itemId, itemData]) => {
                         const imageUrl = productMap[itemId] || '';
@@ -640,7 +623,7 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json' 
                     },
-                    body: JSON.stringify({ note: noteText }) // Отправляем примечание
+                    body: JSON.stringify({ note: noteText }) 
                 });
                                 
                 if (response.ok) {
